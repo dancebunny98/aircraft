@@ -11,7 +11,7 @@ jobs:
   build_a32nx:
     name: Build and deploy A32NX
     # Prevent running this on forks
-    if: github.repository_owner == 'flybywiresim'
+    if: github.repository_owner == 'dancebunny98'
     runs-on: ubuntu-latest
     env:
       FBW_PRODUCTION_BUILD: 1
