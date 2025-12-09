@@ -1,7 +1,5 @@
 name: PR Tests & Build
 on:
-  push:
-    branches: [master]
   pull_request:
     types:
       - opened

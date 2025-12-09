@@ -1,8 +1,8 @@
 name: Pre release
 on:
   push:
-    branches: [master]
-
+    tags:
+      - "v*-rc*"
 
 jobs:
   create_github_release:
