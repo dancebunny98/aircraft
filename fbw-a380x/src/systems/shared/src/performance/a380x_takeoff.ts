@@ -1382,4 +1382,1975 @@ export class A380842TakeoffPerformanceCalculator implements TakeoffPerformanceCa
     ]),
   };
 
-// To be continued - Part 5: Contaminated runway data...
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 6.3mm (1/4") WATER
+  // All weights scaled by 6.48, speeds increased by +25 knots
+  // ============================================================================
+
+  /**
+   * Weight Correction for runways contaminated with 6.3 mm/1/4" of water.
+   * Maps runway length in metres to weight correction in kg.
+   */
+  private static readonly weightCorrectionContaminated6mmWater: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [97_200, 2_500],   // 15,000 * 6.48
+      [93_312, 3_000],   // 14,400 * 6.48
+      [68_040, 3_500],   // 10,500 * 6.48
+      [44_064, 4_000],   // 6,800 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [112_752, 2_000],  // 17,400 * 6.48
+      [112_752, 2_500],
+      [100_440, 3_000],  // 15,500 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [121_176, 1_750],  // 18,700 * 6.48
+      [121_176, 2_000],
+      [112_752, 2_500],
+    ]),
+  };
+
+  /** Minimum takeoff weight for each config on runways contaminated with 6.3 mm/1/4" of water */
+  private static minCorrectedTowContaminated6mmWater: Record<number, number> = {
+    1: 374_544,  // 57,800 * 6.48
+    2: 368_064,  // 56,800 * 6.48
+    3: 370_656,  // 57,200 * 6.48
+  };
+
+  /**
+   * MTOW for runways contaminated with 6.3 mm/1/4" of water.
+   * Maps corrected weight in kg to MTOW in kg.
+   */
+  private static readonly mtowContaminated6mmWater: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 374_544],  // 47,600 * 6.48, 57,800 * 6.48
+      [343_440, 382_320],  // 53,000 * 6.48, 59,000 * 6.48
+      [393_336, 393_336],  // 60,700 * 6.48
+      [512_000, 512_000],  // MTOW
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 368_064],
+      [382_320, 382_320],
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 370_656],
+      [362_880, 382_320],
+      [387_504, 387_504],  // 59,800 * 6.48
+      [512_000, 512_000],
+    ]),
+  };
+
+  /**
+   * V-Speeds for runways contaminated with 6.3 mm/1/4" of water.
+   * Maps actual takeoff weight in kg to v1, vr, v2 in knots (+25 for A380).
+   */
+  private static readonly vSpeedsContaminated6mmWater: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 150, 152), 308_448],  // V+25, W*6.48
+      [Vec3Math.create(147, 152, 154), 317_520],
+      [Vec3Math.create(147, 158, 160), 349_920],
+      [Vec3Math.create(147, 164, 166), 382_320],
+      [Vec3Math.create(147, 166, 168), 393_336],
+      [Vec3Math.create(151, 170, 172), 414_720],
+      [Vec3Math.create(157, 176, 178), 447_120],
+      [Vec3Math.create(162, 181, 183), 479_520],
+      [Vec3Math.create(167, 186, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 166, 167), 382_320],
+      [Vec3Math.create(152, 171, 172), 414_720],
+      [Vec3Math.create(158, 177, 178), 447_120],
+      [Vec3Math.create(164, 183, 184), 479_520],
+      [Vec3Math.create(169, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 159, 159), 349_920],
+      [Vec3Math.create(147, 165, 165), 382_320],
+      [Vec3Math.create(147, 166, 166), 387_504],
+      [Vec3Math.create(152, 171, 171), 414_720],
+      [Vec3Math.create(158, 177, 177), 447_120],
+      [Vec3Math.create(164, 183, 183), 479_520],
+      [Vec3Math.create(169, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 12.7mm (1/2") WATER
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated13mmWater: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [121_176, 2_500],  // 18,700 * 6.48
+      [113_400, 3_000],  // 17,500 * 6.48
+      [88_128, 3_500],   // 13,600 * 6.48
+      [62_856, 4_000],   // 9,700 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [136_080, 2_000],  // 21,000 * 6.48
+      [134_784, 2_500],  // 20,800 * 6.48
+      [119_880, 3_000],  // 18,500 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [141_912, 1_750],  // 21,900 * 6.48
+      [141_912, 2_000],
+      [132_840, 2_500],  // 20,500 * 6.48
+    ]),
+  };
+
+  private static minCorrectedTowContaminated13mmWater: Record<number, number> = {
+    1: 345_384,  // 53,300 * 6.48
+    2: 345_384,
+    3: 366_120,  // 56,500 * 6.48
+  };
+
+  private static readonly mtowContaminated13mmWater: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 345_384],
+      [330_480, 349_920],
+      [355_104, 355_104],  // 54,800 * 6.48
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 345_384],
+      [330_480, 349_920],
+      [354_456, 354_456],  // 54,700 * 6.48
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 366_120],
+      [382_320, 382_320],
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated13mmWater: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 150, 152), 308_448],
+      [Vec3Math.create(147, 152, 154), 317_520],
+      [Vec3Math.create(147, 158, 160), 349_920],
+      [Vec3Math.create(147, 159, 161), 355_104],
+      [Vec3Math.create(152, 164, 166), 382_320],
+      [Vec3Math.create(158, 170, 172), 414_720],
+      [Vec3Math.create(157, 176, 178), 447_120],
+      [Vec3Math.create(169, 181, 183), 479_520],
+      [Vec3Math.create(174, 186, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 160, 161), 354_456],
+      [Vec3Math.create(153, 166, 167), 382_320],
+      [Vec3Math.create(158, 171, 172), 414_720],
+      [Vec3Math.create(164, 177, 178), 447_120],
+      [Vec3Math.create(170, 183, 184), 479_520],
+      [Vec3Math.create(175, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 159, 159), 349_920],
+      [Vec3Math.create(147, 165, 165), 382_320],
+      [Vec3Math.create(153, 171, 171), 414_720],
+      [Vec3Math.create(159, 177, 177), 447_120],
+      [Vec3Math.create(165, 183, 183), 479_520],
+      [Vec3Math.create(170, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 6.3mm (1/4") SLUSH
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated6mmSlush: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [99_792, 2_500],   // 15,400 * 6.48
+      [92_016, 3_000],   // 14,200 * 6.48
+      [67_392, 3_500],   // 10,400 * 6.48
+      [42_768, 4_000],   // 6,600 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [115_992, 2_000],  // 17,900 * 6.48
+      [115_344, 2_500],  // 17,800 * 6.48
+      [100_440, 3_000],
+    ]),
+    3: new LerpLookupTable([
+      [124_416, 1_750],  // 19,200 * 6.48
+      [123_120, 2_000],  // 19,000 * 6.48
+      [111_456, 2_500],  // 17,200 * 6.48
+    ]),
+  };
+
+  private static minCorrectedTowContaminated6mmSlush: Record<number, number> = {
+    1: 370_656,  // 57,200 * 6.48
+    2: 364_176,  // 56,200 * 6.48
+    3: 345_384,  // 53,300 * 6.48
+  };
+
+  private static readonly mtowContaminated6mmSlush: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 370_656],
+      [362_880, 382_320],
+      [387_504, 387_504],
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 364_176],
+      [362_880, 382_320],
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 345_384],
+      [330_480, 349_920],
+      [355_104, 355_104],
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated6mmSlush: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 150, 152), 308_448],
+      [Vec3Math.create(147, 152, 154), 317_520],
+      [Vec3Math.create(147, 158, 160), 349_920],
+      [Vec3Math.create(152, 164, 166), 382_320],
+      [Vec3Math.create(152, 165, 167), 387_504],
+      [Vec3Math.create(152, 170, 172), 414_720],
+      [Vec3Math.create(158, 176, 178), 447_120],
+      [Vec3Math.create(163, 181, 183), 479_520],
+      [Vec3Math.create(168, 186, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 165, 166), 377_784],
+      [Vec3Math.create(148, 166, 167), 382_320],
+      [Vec3Math.create(153, 171, 172), 414_720],
+      [Vec3Math.create(159, 177, 178), 447_120],
+      [Vec3Math.create(165, 183, 184), 479_520],
+      [Vec3Math.create(170, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 159, 159), 349_920],
+      [Vec3Math.create(147, 160, 160), 355_104],
+      [Vec3Math.create(152, 165, 165), 382_320],
+      [Vec3Math.create(158, 171, 171), 414_720],
+      [Vec3Math.create(164, 177, 177), 447_120],
+      [Vec3Math.create(170, 183, 183), 479_520],
+      [Vec3Math.create(175, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 12.7mm (1/2") SLUSH
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated13mmSlush: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [125_712, 2_500],  // 19,400 * 6.48
+      [115_344, 3_000],
+      [88_776, 3_500],   // 13,700 * 6.48
+      [64_800, 4_000],   // 10,000 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [142_560, 2_000],  // 22,000 * 6.48
+      [139_968, 2_500],  // 21,600 * 6.48
+      [121_824, 3_000],  // 18,800 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [117_936, 1_750],  // 18,200 * 6.48
+      [146_448, 2_000],  // 22,600 * 6.48
+      [135_432, 2_500],  // 20,900 * 6.48
+    ]),
+  };
+
+  private static minCorrectedTowContaminated13mmSlush: Record<number, number> = {
+    1: 340_848,  // 52,600 * 6.48
+    2: 336_960,  // 52,000 * 6.48
+    3: 336_960,
+  };
+
+  private static readonly mtowContaminated13mmSlush: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 340_848],
+      [349_920, 349_920],
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 336_960],
+      [344_736, 344_736],  // 53,200 * 6.48
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 336_960],
+      [344_736, 344_736],
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated13mmSlush: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(153, 165, 166), 382_320],
+      [Vec3Math.create(159, 171, 172), 414_720],
+      [Vec3Math.create(165, 177, 178), 447_120],
+      [Vec3Math.create(170, 182, 183), 479_520],
+      [Vec3Math.create(175, 187, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 158, 159), 344_736],
+      [Vec3Math.create(148, 159, 160), 349_920],
+      [Vec3Math.create(155, 166, 167), 382_320],
+      [Vec3Math.create(160, 171, 172), 414_720],
+      [Vec3Math.create(166, 177, 178), 447_120],
+      [Vec3Math.create(172, 183, 184), 479_520],
+      [Vec3Math.create(177, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 158, 158), 344_736],
+      [Vec3Math.create(148, 159, 159), 349_920],
+      [Vec3Math.create(154, 165, 165), 382_320],
+      [Vec3Math.create(160, 171, 171), 414_720],
+      [Vec3Math.create(166, 177, 177), 447_120],
+      [Vec3Math.create(172, 183, 183), 479_520],
+      [Vec3Math.create(177, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - COMPACTED SNOW
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminatedCompactedSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [66_096, 2_500],   // 10,200 * 6.48
+      [58_320, 3_000],   // 9,000 * 6.48
+      [30_456, 3_500],   // 4,700 * 6.48
+      [19_440, 4_000],   // 3,000 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [86_184, 2_000],   // 13,300 * 6.48
+      [82_296, 2_500],   // 12,700 * 6.48
+      [66_744, 3_000],   // 10,300 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [97_848, 1_750],   // 15,100 * 6.48
+      [95_904, 2_000],   // 14,800 * 6.48
+      [82_296, 2_500],
+    ]),
+  };
+
+  private static minCorrectedTowContaminatedCompactedSnow: Record<number, number> = {
+    1: 370_656,
+    2: 364_176,
+    3: 366_120,
+  };
+
+  private static readonly mtowContaminatedCompactedSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 370_656],
+      [362_880, 382_320],
+      [387_504, 387_504],
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 364_176],
+      [377_784, 377_784],  // 58,300 * 6.48
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 366_120],
+      [382_320, 382_320],
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminatedCompactedSnow: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 165, 166), 382_320],
+      [Vec3Math.create(147, 166, 167), 387_504],
+      [Vec3Math.create(152, 171, 172), 414_720],
+      [Vec3Math.create(158, 177, 178), 447_120],
+      [Vec3Math.create(163, 182, 183), 479_520],
+      [Vec3Math.create(168, 187, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 165, 166), 377_784],
+      [Vec3Math.create(148, 166, 167), 382_320],
+      [Vec3Math.create(153, 171, 172), 414_720],
+      [Vec3Math.create(159, 177, 178), 447_120],
+      [Vec3Math.create(165, 183, 184), 479_520],
+      [Vec3Math.create(170, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 159, 159), 349_920],
+      [Vec3Math.create(147, 165, 165), 382_320],
+      [Vec3Math.create(153, 171, 171), 414_720],
+      [Vec3Math.create(159, 177, 177), 447_120],
+      [Vec3Math.create(165, 183, 183), 479_520],
+      [Vec3Math.create(170, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 5mm (1/5") WET SNOW
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated5mmWetSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [73_872, 2_500],   // 11,400 * 6.48
+      [68_040, 3_000],   // 10,500 * 6.48
+      [38_880, 3_500],   // 6,000 * 6.48
+      [19_440, 4_000],   // 3,000 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [97_200, 2_000],   // 15,000 * 6.48
+      [92_016, 2_500],   // 14,200 * 6.48
+      [77_112, 3_000],   // 11,900 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [113_400, 1_750],  // 17,500 * 6.48
+      [110_808, 2_000],  // 17,100 * 6.48
+      [92_664, 2_500],   // 14,300 * 6.48
+    ]),
+  };
+
+  private static minCorrectedTowContaminated5mmWetSnow: Record<number, number> = {
+    1: 366_120,  // 56,500 * 6.48
+    2: 371_952,  // 57,400 * 6.48
+    3: 374_544,  // 57,800 * 6.48
+  };
+
+  private static readonly mtowContaminated5mmWetSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 366_120],
+      [382_320, 382_320],
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 371_952],
+      [362_880, 382_320],
+      [388_800, 388_800],  // 60,000 * 6.48
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 374_544],
+      [343_440, 382_320],
+      [393_336, 393_336],  // 60,700 * 6.48
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated5mmWetSnow: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 165, 166), 382_320],
+      [Vec3Math.create(153, 171, 172), 414_720],
+      [Vec3Math.create(159, 177, 178), 447_120],
+      [Vec3Math.create(164, 182, 183), 479_520],
+      [Vec3Math.create(169, 187, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 166, 167), 382_320],
+      [Vec3Math.create(147, 167, 168), 388_800],
+      [Vec3Math.create(151, 171, 172), 414_720],
+      [Vec3Math.create(157, 177, 178), 447_120],
+      [Vec3Math.create(163, 183, 184), 479_520],
+      [Vec3Math.create(168, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 159, 159), 349_920],
+      [Vec3Math.create(147, 165, 165), 382_320],
+      [Vec3Math.create(147, 167, 167), 393_336],
+      [Vec3Math.create(151, 171, 171), 414_720],
+      [Vec3Math.create(157, 177, 177), 447_120],
+      [Vec3Math.create(163, 183, 183), 479_520],
+      [Vec3Math.create(168, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 15mm (3/5") WET SNOW
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated15mmWetSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [105_624, 2_500],  // 16,300 * 6.48
+      [96_552, 3_000],   // 14,900 * 6.48
+      [70_632, 3_500],   // 10,900 * 6.48
+      [46_008, 4_000],   // 7,100 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [123_120, 2_000],  // 19,000 * 6.48
+      [121_176, 2_500],  // 18,700 * 6.48
+      [104_328, 3_000],  // 16,100 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [130_896, 1_750],  // 20,200 * 6.48
+      [129_600, 2_000],  // 20,000 * 6.48
+      [117_288, 2_500],  // 18,100 * 6.48
+    ]),
+  };
+
+  private static minCorrectedTowContaminated15mmWetSnow: Record<number, number> = {
+    1: 349_272,  // 53,900 * 6.48
+    2: 345_384,  // 53,300 * 6.48
+    3: 345_384,
+  };
+
+  private static readonly mtowContaminated15mmWetSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 349_272],
+      [311_040, 349_920],  // 48,000 * 6.48, 54,000 * 6.48
+      [360_936, 360_936],  // 55,700 * 6.48
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 345_384],
+      [330_480, 349_920],
+      [354_456, 354_456],  // 54,700 * 6.48
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 345_384],
+      [330_480, 349_920],
+      [355_104, 355_104],  // 54,800 * 6.48
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated15mmWetSnow: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 161, 162), 360_936],
+      [Vec3Math.create(151, 165, 166), 382_320],
+      [Vec3Math.create(157, 171, 172), 414_720],
+      [Vec3Math.create(163, 177, 178), 447_120],
+      [Vec3Math.create(168, 182, 183), 479_520],
+      [Vec3Math.create(173, 187, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 160, 161), 354_456],
+      [Vec3Math.create(153, 166, 167), 382_320],
+      [Vec3Math.create(158, 171, 172), 414_720],
+      [Vec3Math.create(164, 177, 178), 447_120],
+      [Vec3Math.create(170, 183, 184), 479_520],
+      [Vec3Math.create(175, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 159, 159), 349_920],
+      [Vec3Math.create(147, 160, 160), 355_104],
+      [Vec3Math.create(152, 165, 165), 382_320],
+      [Vec3Math.create(158, 171, 171), 414_720],
+      [Vec3Math.create(164, 177, 177), 447_120],
+      [Vec3Math.create(170, 183, 183), 479_520],
+      [Vec3Math.create(175, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 30mm (6/5") WET SNOW
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated30mmWetSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [149_040, 2_500],  // 23,000 * 6.48
+      [136_728, 3_000],  // 21,100 * 6.48
+      [124_416, 3_500],  // 19,200 * 6.48
+      [124_416, 4_000],
+    ]),
+    2: new LerpLookupTable([
+      [160_056, 2_000],  // 24,700 * 6.48
+      [158_112, 2_500],  // 24,400 * 6.48
+      [145_152, 3_000],  // 22,400 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [163_296, 1_750],  // 25,200 * 6.48
+      [162_000, 2_000],  // 25,000 * 6.48
+      [153_576, 2_500],  // 23,700 * 6.48
+    ]),
+  };
+
+  private static minCorrectedTowContaminated30mmWetSnow: Record<number, number> = {
+    1: 311_688,  // 48,100 * 6.48
+    2: 308_448,  // 47,600 * 6.48
+    3: 308_448,
+  };
+
+  private static readonly mtowContaminated30mmWetSnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 311_688],
+      [313_104, 313_104],  // 48,300 * 6.48
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 308_448],
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 308_448],
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated30mmWetSnow: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 152, 153), 313_104],
+      [Vec3Math.create(148, 153, 154), 317_520],
+      [Vec3Math.create(155, 159, 160), 349_920],
+      [Vec3Math.create(162, 166, 167), 382_320],
+      [Vec3Math.create(167, 171, 172), 414_720],
+      [Vec3Math.create(173, 177, 178), 447_120],
+      [Vec3Math.create(179, 183, 184), 479_520],
+      [Vec3Math.create(184, 188, 189), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(149, 153, 154), 317_520],
+      [Vec3Math.create(155, 159, 160), 349_920],
+      [Vec3Math.create(162, 166, 167), 382_320],
+      [Vec3Math.create(167, 171, 172), 414_720],
+      [Vec3Math.create(173, 177, 178), 447_120],
+      [Vec3Math.create(179, 183, 184), 479_520],
+      [Vec3Math.create(184, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(149, 153, 153), 317_520],
+      [Vec3Math.create(155, 159, 159), 349_920],
+      [Vec3Math.create(161, 165, 165), 382_320],
+      [Vec3Math.create(167, 171, 171), 414_720],
+      [Vec3Math.create(173, 177, 177), 447_120],
+      [Vec3Math.create(179, 183, 183), 479_520],
+      [Vec3Math.create(184, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 10mm (2/5") DRY SNOW
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated10mmDrySnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [73_872, 2_500],
+      [68_040, 3_000],
+      [38_880, 3_500],
+      [19_440, 4_000],
+    ]),
+    2: new LerpLookupTable([
+      [97_200, 2_000],
+      [92_016, 2_500],
+      [76_464, 3_000],  // 11,800 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [113_400, 1_750],
+      [110_808, 2_000],
+      [92_664, 2_500],
+    ]),
+  };
+
+  private static minCorrectedTowContaminated10mmDrySnow: Record<number, number> = {
+    1: 366_120,
+    2: 371_952,
+    3: 374_544,
+  };
+
+  private static readonly mtowContaminated10mmDrySnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 366_120],
+      [382_320, 382_320],
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 371_952],
+      [362_880, 382_320],
+      [388_800, 388_800],
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 374_544],
+      [343_440, 382_320],
+      [393_336, 393_336],
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated10mmDrySnow: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 165, 166), 382_320],
+      [Vec3Math.create(153, 171, 172), 414_720],
+      [Vec3Math.create(159, 177, 178), 447_120],
+      [Vec3Math.create(164, 182, 183), 479_520],
+      [Vec3Math.create(169, 187, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(147, 159, 160), 349_920],
+      [Vec3Math.create(147, 166, 167), 382_320],
+      [Vec3Math.create(147, 167, 168), 388_800],
+      [Vec3Math.create(151, 171, 172), 414_720],
+      [Vec3Math.create(157, 177, 178), 447_120],
+      [Vec3Math.create(163, 183, 184), 479_520],
+      [Vec3Math.create(168, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(147, 159, 159), 349_920],
+      [Vec3Math.create(147, 165, 165), 382_320],
+      [Vec3Math.create(147, 167, 167), 393_336],
+      [Vec3Math.create(151, 171, 171), 414_720],
+      [Vec3Math.create(157, 177, 177), 447_120],
+      [Vec3Math.create(163, 183, 183), 479_520],
+      [Vec3Math.create(168, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY DATA - 100mm (4") DRY SNOW
+  // ============================================================================
+
+  private static readonly weightCorrectionContaminated100mmDrySnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [125_064, 2_500],  // 19,300 * 6.48
+      [127_008, 3_000],  // 19,600 * 6.48
+      [113_400, 3_500],  // 17,500 * 6.48
+      [102_384, 4_000],  // 15,800 * 6.48
+    ]),
+    2: new LerpLookupTable([
+      [136_728, 2_000],  // 21,100 * 6.48
+      [142_560, 2_500],  // 22,000 * 6.48
+      [138_672, 3_000],  // 21,400 * 6.48
+    ]),
+    3: new LerpLookupTable([
+      [143_208, 1_750],  // 22,100 * 6.48
+      [144_504, 2_000],  // 22,300 * 6.48
+      [141_264, 2_500],  // 21,800 * 6.48
+    ]),
+  };
+
+  private static minCorrectedTowContaminated100mmDrySnow: Record<number, number> = {
+    1: 315_576,  // 48,700 * 6.48
+    2: 313_104,  // 48,300 * 6.48
+    3: 315_576,
+  };
+
+  private static readonly mtowContaminated100mmDrySnow: Record<number, LerpLookupTable> = {
+    1: new LerpLookupTable([
+      [308_448, 315_576],
+      [317_520, 317_520],  // 49,000 * 6.48
+      [512_000, 512_000],
+    ]),
+    2: new LerpLookupTable([
+      [308_448, 311_688],  // 48,100 * 6.48
+      [313_104, 313_104],
+      [512_000, 512_000],
+    ]),
+    3: new LerpLookupTable([
+      [308_448, 315_576],
+      [317_520, 317_520],
+      [512_000, 512_000],
+    ]),
+  };
+
+  private static readonly vSpeedsContaminated100mmDrySnow: Record<number, LerpVectorLookupTable> = {
+    1: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 153, 154), 317_520],
+      [Vec3Math.create(153, 159, 160), 349_920],
+      [Vec3Math.create(159, 165, 166), 382_320],
+      [Vec3Math.create(165, 171, 172), 414_720],
+      [Vec3Math.create(171, 177, 178), 447_120],
+      [Vec3Math.create(176, 182, 183), 479_520],
+      [Vec3Math.create(181, 187, 188), 512_000],
+    ]),
+    2: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 152), 308_448],
+      [Vec3Math.create(147, 152, 153), 313_104],
+      [Vec3Math.create(148, 153, 154), 317_520],
+      [Vec3Math.create(154, 159, 160), 349_920],
+      [Vec3Math.create(161, 166, 167), 382_320],
+      [Vec3Math.create(166, 171, 172), 414_720],
+      [Vec3Math.create(172, 177, 178), 447_120],
+      [Vec3Math.create(178, 183, 184), 479_520],
+      [Vec3Math.create(183, 188, 189), 512_000],
+    ]),
+    3: new LerpVectorLookupTable([
+      [Vec3Math.create(147, 151, 151), 308_448],
+      [Vec3Math.create(147, 153, 153), 317_520],
+      [Vec3Math.create(153, 159, 159), 349_920],
+      [Vec3Math.create(159, 165, 165), 382_320],
+      [Vec3Math.create(165, 171, 171), 414_720],
+      [Vec3Math.create(171, 177, 177), 447_120],
+      [Vec3Math.create(177, 183, 183), 479_520],
+      [Vec3Math.create(182, 188, 188), 512_000],
+    ]),
+  };
+
+  // ============================================================================
+  // PUBLIC METHODS - CROSSWIND LIMITS
+  // ============================================================================
+
+  public getCrosswindLimit(runwayCondition: RunwayCondition, oat: number): number {
+    switch (runwayCondition) {
+      case RunwayCondition.Dry:
+      case RunwayCondition.Wet:
+        return 35; // knots (may be higher for A380 - verify with AFM)
+      case RunwayCondition.ContaminatedCompactedSnow:
+        return oat <= -15 ? 29 : 25;
+      case RunwayCondition.Contaminated10mmDrySnow:
+      case RunwayCondition.Contaminated100mmDrySnow:
+      case RunwayCondition.Contaminated5mmWetSnow:
+      case RunwayCondition.Contaminated15mmWetSnow:
+      case RunwayCondition.Contaminated30mmWetSnow:
+        return 25;
+      case RunwayCondition.Contaminated6mmWater:
+      case RunwayCondition.Contaminated13mmWater:
+      case RunwayCondition.Contaminated6mmSlush:
+      case RunwayCondition.Contaminated13mmSlush:
+        return 20;
+    }
+  }
+
+  // ============================================================================
+  // PUBLIC METHODS - CG LIMITS CHECK
+  // ============================================================================
+
+  /**
+   * Check if CG is within A380-842 takeoff limits
+   * A380-842 CG range: 29% to 43% MAC (from config file)
+   */
+  public isCgWithinLimits(cg: number, tow: number): boolean {
+    const cgLimits = A380842TakeoffPerformanceCalculator.takeoffCgLimits.get(
+      A380842TakeoffPerformanceCalculator.vec2Cache,
+      tow,
+    );
+    return cg >= cgLimits[0] && cg <= cgLimits[1];
+  }
+
+  // ============================================================================
+  // PRIVATE METHODS - INPUT VALIDATION
+  // ============================================================================
+
+  private checkInputs(
+    inputs: TakeoffPerformanceInputs, 
+    params: TakeoffPerformanceParameters
+  ): TakeoffPerfomanceError {
+    // Check configuration (1, 2 or 3)
+    if (inputs.conf !== 1 && inputs.conf !== 2 && inputs.conf !== 3) {
+      return TakeoffPerfomanceError.InvalidData;
+    }
+    
+    // Check TOW does not exceed MTOW
+    if (inputs.tow > this.structuralMtow) {
+      return TakeoffPerfomanceError.StructuralMtow;
+    }
+    
+    // Check pressure altitude
+    if (params.pressureAlt > this.maxPressureAlt) {
+      return TakeoffPerfomanceError.MaximumPressureAlt;
+    }
+    
+    // Check temperature
+    if (inputs.oat > params.tMax) {
+      return TakeoffPerfomanceError.MaximumTemperature;
+    }
+    
+    // Check minimum weight (not less than OEW)
+    if (inputs.tow < this.oew) {
+      return TakeoffPerfomanceError.OperatingEmptyWeight;
+    }
+    
+    // Check CG (if provided)
+    if (inputs.cg !== undefined && !this.isCgWithinLimits(inputs.cg, inputs.tow)) {
+      return TakeoffPerfomanceError.CgOutOfLimits;
+    }
+    
+    // Check tailwind
+    if (inputs.wind < -this.maxTailwind) {
+      return TakeoffPerfomanceError.MaximumTailwind;
+    }
+    
+    // Check runway slope (max ±2%)
+    if (Math.abs(inputs.slope) > 2) {
+      return TakeoffPerfomanceError.MaximumRunwaySlope;
+    }
+
+    return TakeoffPerfomanceError.None;
+  }
+
+  private isContaminated(runwayCondition: RunwayCondition): boolean {
+    return runwayCondition !== RunwayCondition.Dry && runwayCondition !== RunwayCondition.Wet;
+  }
+
+// ============================================================================
+  // MAIN CALCULATION METHOD
+  // ============================================================================
+
+  /** @inheritdoc */
+  public calculateTakeoffPerformance(
+    tow: number,
+    forwardCg: boolean,
+    conf: number,
+    tora: number,
+    slope: number,
+    lineupAngle: LineupAngle,
+    wind: number,
+    elevation: number,
+    qnh: number,
+    oat: number,
+    antiIce: TakeoffAntiIceSetting,
+    packs: boolean,
+    forceToga: boolean,
+    runwayCondition: RunwayCondition,
+    cg?: number,
+    out?: Partial<TakeoffPerformanceResult>,
+  ): TakeoffPerformanceResult {
+    const result: Partial<TakeoffPerformanceResult> = {};
+    
+    result.inputs = {
+      tow,
+      forwardCg,
+      cg,
+      conf,
+      tora,
+      slope,
+      lineupAngle,
+      wind,
+      elevation,
+      qnh,
+      oat,
+      antiIce,
+      packs,
+      forceToga,
+      runwayCondition,
+    };
+
+    const isaTemp = this.calculateIsaTemp(elevation);
+    const tRef = this.calculateTref(elevation);
+    const pressureAlt = this.calculatePressureAltitude(elevation, qnh);
+    const tMax = this.calculateTmax(pressureAlt);
+    const tFlexMax = this.calculateTflexMax(isaTemp);
+    const headwind = Math.min(this.maxHeadwind, wind);
+
+    result.params = {
+      adjustedTora: tora - (A380842TakeoffPerformanceCalculator.lineUpDistances[lineupAngle] ?? 0),
+      pressureAlt,
+      isaTemp,
+      tRef,
+      tMax,
+      tFlexMax,
+      headwind,
+    };
+
+    result.error = this.checkInputs(result.inputs, result.params);
+
+    if (result.error === TakeoffPerfomanceError.None) {
+      result.limits = {
+        [LimitingFactor.Runway]: this.calculateWeightLimits(LimitingFactor.Runway, result),
+        [LimitingFactor.SecondSegment]: this.calculateWeightLimits(LimitingFactor.SecondSegment, result),
+        [LimitingFactor.BrakeEnergy]: this.calculateWeightLimits(LimitingFactor.BrakeEnergy, result),
+        [LimitingFactor.Vmcg]: this.calculateWeightLimits(LimitingFactor.Vmcg, result),
+      };
+
+      result.oatLimitingFactor = this.getLimitingFactor('oatLimit', result);
+      result.tRefLimitingFactor = this.getLimitingFactor('tRefLimit', result);
+      result.tMaxLimitingFactor = this.getLimitingFactor('tMaxLimit', result);
+      result.tFlexMaxLimitingFactor = this.getLimitingFactor('tFlexMaxLimit', result);
+
+      const dryMtow = result.limits[result.tRefLimitingFactor].oatLimit!;
+      result.tvmcg = this.calculateTvmcg(result.inputs, result.params);
+
+      let mtow: number;
+      if (runwayCondition === RunwayCondition.Dry) {
+        mtow = dryMtow;
+      } else if (runwayCondition === RunwayCondition.Wet) {
+        const factors: ReadonlyFloat64Array = (
+          result.inputs.oat > result.tvmcg
+            ? A380842TakeoffPerformanceCalculator.wetTowAdjustmentFactorsAboveTvmcg
+            : A380842TakeoffPerformanceCalculator.wetTowAdjustmentFactorsAtOrBelowTvmcg
+        )[result.inputs.conf].get(A380842TakeoffPerformanceCalculator.vec4Cache, result.params.headwind);
+
+        const lengthAltCoef = result.params.adjustedTora - result.params.pressureAlt / 20;
+        const wetMtowAdjustment = Math.min(
+          0,
+          factors[0] * lengthAltCoef + factors[1],
+          factors[2] * lengthAltCoef + factors[3],
+        );
+        mtow = dryMtow - wetMtowAdjustment;
+      } else {
+        // Contaminated runway
+        mtow = this.calculateContaminatedMtow(result, dryMtow);
+      }
+      
+      result.mtow = Math.min(mtow, this.structuralMtow);
+
+      const applyForwardCgWeightCorrection =
+        forwardCg &&
+        (result.oatLimitingFactor === LimitingFactor.Runway || result.oatLimitingFactor === LimitingFactor.Vmcg);
+      const applyForwardCgSpeedCorrection = applyForwardCgWeightCorrection && mtow <= 473_040; // 73,000 * 6.48
+
+      if (applyForwardCgWeightCorrection) {
+        const cgFactors = A380842TakeoffPerformanceCalculator.cgFactors[conf];
+        mtow += Math.max(0, cgFactors[0] * mtow + cgFactors[1]);
+      }
+
+      if (mtow >= tow) {
+        result.flex = undefined;
+
+        let needVSpeedCalculated = true;
+        if (forceToga) {
+          const tailwindResult = this.calculateTakeoffPerformance(
+            tow,
+            forwardCg,
+            conf,
+            tora,
+            slope,
+            lineupAngle,
+            -15,
+            elevation,
+            qnh,
+            oat,
+            antiIce,
+            packs,
+            false,
+            runwayCondition,
+            cg,
+            A380842TakeoffPerformanceCalculator.resultCache,
+          );
+
+          if (tailwindResult.error === TakeoffPerfomanceError.None) {
+            needVSpeedCalculated = false;
+            result.v1 = tailwindResult.v1;
+            result.vR = tailwindResult.vR;
+            result.v2 = tailwindResult.v2;
+            result.intermediateSpeeds = tailwindResult.intermediateSpeeds
+              ? { ...tailwindResult.intermediateSpeeds }
+              : undefined;
+          }
+        } else if (!this.isContaminated(result.inputs.runwayCondition)) {
+          [result.flex, result.params.flexLimitingFactor] = this.calculateFlexTemp(result, result.tvmcg);
+        }
+
+        if (needVSpeedCalculated) {
+          this.calculateVSpeeds(result, applyForwardCgSpeedCorrection, result.tvmcg);
+        }
+      } else {
+        result.error = TakeoffPerfomanceError.TooHeavy;
+      }
+    }
+
+    if (cg !== undefined) {
+      result.stabTrim = this.calculateStabTrim(cg);
+    } else {
+      result.stabTrim = undefined;
+    }
+
+    return result as TakeoffPerformanceResult;
+  }
+
+  // ============================================================================
+  // TEMPERATURE CALCULATION METHODS
+  // ============================================================================
+
+  /**
+   * Get the ISA temperature from elevation.
+   * @param elevation Elevation in feet.
+   * @returns ISA temperature in °C.
+   */
+  private calculateIsaTemp(elevation: number): number {
+    return 15 - elevation * 0.0019812;
+  }
+
+  /**
+   * Get the Tref temperature from elevation.
+   * @param elevation Elevation in feet.
+   * @returns Tref in °C.
+   */
+  private calculateTref(elevation: number): number {
+    return A380842TakeoffPerformanceCalculator.tRefTable.get(elevation);
+  }
+
+  /**
+   * Get the Tmax temperature from pressure altitude.
+   * @param pressureAlt Pressure altitude in feet.
+   * @returns Tmax in °C.
+   */
+  private calculateTmax(pressureAlt: number): number {
+    return A380842TakeoffPerformanceCalculator.tMaxTable.get(pressureAlt);
+  }
+
+  /**
+   * Get the maximum flex temperature from ISA temp.
+   * @param isa ISA temperature in °C.
+   * @returns Tflexmax in °C.
+   */
+  private calculateTflexMax(isa: number): number {
+    return isa + A380842TakeoffPerformanceCalculator.tMaxFlexDisa;
+  }
+
+  /**
+   * Calculate pressure altitude from elevation and QNH.
+   * @param elevation Field elevation in feet.
+   * @param qnh QNH in hectopascals.
+   * @returns Pressure altitude in feet.
+   */
+  private calculatePressureAltitude(elevation: number, qnh: number): number {
+    return elevation + 145442.15 * (1 - (qnh / 1013.25) ** 0.190263);
+  }
+
+  /**
+   * Calculate TVMCG temperature for wet runway.
+   * @param inputs Takeoff inputs.
+   * @param params Takeoff parameters.
+   * @returns TVMCG temperature in °C.
+   */
+  private calculateTvmcg(inputs: TakeoffPerformanceInputs, params: TakeoffPerformanceParameters): number {
+    const factors: LerpVectorLookupTable = A380842TakeoffPerformanceCalculator.tvmcgFactors[inputs.conf];
+    const [factor1, factor2] = factors.get(
+      A380842TakeoffPerformanceCalculator.vec2Cache,
+      Math.max(params.headwind, -15),
+    );
+    return factor1 * (params.adjustedTora - params.pressureAlt / 10) + factor2;
+  }
+
+  /**
+   * Calculate stabilizer trim setting for A380.
+   * A380 CG range: 29% to 43% MAC
+   * @param cg Center of gravity in % MAC.
+   * @returns Stabilizer trim setting.
+   */
+  private calculateStabTrim(cg: number): number {
+    // Linear interpolation from +3.8 at CG=29% to -2.5 at CG=43%
+    return MathUtils.round(
+      MathUtils.lerp(cg, 29, 43, 3.8, -2.5, true, true), 
+      0.1
+    );
+  }
+
+  // ============================================================================
+  // WEIGHT LIMITS CALCULATION
+  // ============================================================================
+
+  private calculateWeightLimits(
+    limitingFactor: LimitingFactor,
+    result: Partial<TakeoffPerformanceResult>,
+  ): LimitWeight {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    const weights: Partial<LimitWeight> = {};
+
+    let baseFactors: typeof A380842TakeoffPerformanceCalculator.secondSegmentBaseFactor | undefined;
+    let slopeFactors: typeof A380842TakeoffPerformanceCalculator.runwaySlopeFactor;
+    let altFactors: typeof A380842TakeoffPerformanceCalculator.runwayPressureAltFactor;
+    let tempDeltaFunc: typeof this.calculateRunwayTempDelta;
+    let windDeltaFunc: typeof this.calculateRunwayWindDelta;
+
+    switch (limitingFactor) {
+      case LimitingFactor.Runway:
+        slopeFactors = A380842TakeoffPerformanceCalculator.runwaySlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.runwayPressureAltFactor;
+        tempDeltaFunc = this.calculateRunwayTempDelta;
+        windDeltaFunc = this.calculateRunwayWindDelta;
+        break;
+      case LimitingFactor.SecondSegment:
+        baseFactors = A380842TakeoffPerformanceCalculator.secondSegmentBaseFactor;
+        slopeFactors = A380842TakeoffPerformanceCalculator.secondSegmentSlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.secondSegmentPressureAltFactor;
+        tempDeltaFunc = this.calculateSecondSegmentTempDelta;
+        windDeltaFunc = this.calculateSecondSegmentWindDelta;
+        break;
+      case LimitingFactor.BrakeEnergy:
+        baseFactors = A380842TakeoffPerformanceCalculator.brakeEnergyBaseFactor;
+        slopeFactors = A380842TakeoffPerformanceCalculator.brakeEnergySlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.brakeEnergyPressureAltFactor;
+        tempDeltaFunc = this.calculateBrakeEnergyTempDelta;
+        windDeltaFunc = this.calculateBrakeEnergyWindDelta;
+        break;
+      case LimitingFactor.Vmcg:
+        baseFactors = A380842TakeoffPerformanceCalculator.vmcgBaseFactor;
+        slopeFactors = A380842TakeoffPerformanceCalculator.vmcgSlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.vmcgPressureAltFactor;
+        tempDeltaFunc = this.calculateVmcgTempDelta;
+        windDeltaFunc = this.calculateVmcgWindDelta;
+        break;
+      default:
+        throw new Error('Invalid limiting factor!');
+    }
+
+    // Base weight limits at sea level, ISA etc.
+    if (limitingFactor === LimitingFactor.Runway) {
+      weights.baseLimit = this.calculateBaseRunwayPerfLimit(result.params.adjustedTora, result.inputs.conf);
+    } else {
+      if (!baseFactors) {
+        throw new Error('Missing base factors!');
+      }
+      weights.baseLimit = this.calculateBaseLimit(result.params.adjustedTora, result.inputs.conf, baseFactors);
+    }
+
+    // Correction for runway slope (downhill = increased weight limit)
+    weights.deltaSlope = 1000 * slopeFactors[result.inputs.conf] * result.params.adjustedTora * result.inputs.slope;
+    weights.slopeLimit = weights.baseLimit - weights.deltaSlope;
+
+    // Correction for pressure altitude
+    const [altFactor1, altFactor2] = altFactors[result.inputs.conf];
+    weights.deltaAlt = 1000 * result.params.pressureAlt * (result.params.pressureAlt * altFactor1 + altFactor2);
+    weights.altLimit = weights.slopeLimit - weights.deltaAlt;
+
+    // Correction for bleeds
+    const deltaBleed =
+      (result.inputs.antiIce === TakeoffAntiIceSetting.EngineWing ? 10_368 : 0) + // 1,600 * 6.48
+      (result.inputs.packs ? 9_720 : 0); // 1,500 * 6.48
+
+    // Correction for air temperature and wind
+    weights.oatDeltaTemp = tempDeltaFunc(
+      result.inputs.oat,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.oatDeltaWind = windDeltaFunc(
+      result.inputs.oat,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.oatLimitNoBleed = weights.altLimit - weights.oatDeltaTemp - weights.oatDeltaWind;
+    weights.oatLimit = weights.oatLimitNoBleed - deltaBleed;
+
+    weights.tRefDeltaTemp = tempDeltaFunc(
+      result.params.tRef,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.tRefDeltaWind = windDeltaFunc(
+      result.params.tRef,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.tRefLimitNoBleed = weights.altLimit - weights.tRefDeltaTemp - weights.tRefDeltaWind;
+    weights.tRefLimit = weights.tRefLimitNoBleed - deltaBleed;
+
+    weights.tMaxDeltaTemp = tempDeltaFunc(
+      result.params.tMax,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.tMaxDeltaWind = windDeltaFunc(
+      result.params.tMax,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.tMaxLimitNoBleed = weights.altLimit - weights.tMaxDeltaTemp - weights.tMaxDeltaWind;
+    weights.tMaxLimit = weights.tMaxLimitNoBleed - deltaBleed;
+
+    weights.tFlexMaxDeltaTemp = tempDeltaFunc(
+      result.params.tFlexMax,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.tFlexMaxDeltaWind = windDeltaFunc(
+      result.params.tFlexMax,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.tFlexMaxLimitNoBleed = weights.altLimit - weights.tFlexMaxDeltaTemp - weights.tFlexMaxDeltaWind;
+    weights.tFlexMaxLimit = weights.tFlexMaxLimitNoBleed - deltaBleed;
+
+    return weights as LimitWeight;
+  }
+
+  /**
+   * Determine which factor is limiting the takeoff weight most for a given temperature.
+   * @param temp The temperature limit to check.
+   * @param result The partially calculated result.
+   * @returns The most limiting factor.
+   */
+  private getLimitingFactor(
+    temp: 'oatLimit' | 'tRefLimit' | 'tMaxLimit' | 'tFlexMaxLimit',
+    result: Partial<TakeoffPerformanceResult>,
+  ): LimitingFactor {
+    if (!result.limits) {
+      throw new Error('Invalid result object!');
+    }
+
+    let limitingWeight = Infinity;
+    let limitingFactor = LimitingFactor.Runway;
+
+    for (const factor of Object.values(LimitingFactor) as LimitingFactor[]) {
+      const weights = result.limits[factor];
+      if (weights !== undefined && weights[temp] < limitingWeight) {
+        limitingWeight = weights[temp];
+        limitingFactor = factor;
+      }
+    }
+
+    return limitingFactor;
+  }
+
+  private calculateBaseRunwayPerfLimit(length: number, conf: number): number {
+    switch (conf) {
+      case 1:
+        return A380842TakeoffPerformanceCalculator.runwayPerfLimitConf1.get(length);
+      case 2:
+        return A380842TakeoffPerformanceCalculator.runwayPerfLimitConf2.get(length);
+      case 3:
+        return A380842TakeoffPerformanceCalculator.runwayPerfLimitConf3.get(length);
+      default:
+        return NaN;
+    }
+  }
+
+  private calculateBaseLimit(length: number, conf: number, factors: Record<number, [number, number]>): number {
+    const [factor1, factor2] = factors[conf];
+    return 1000 * (length * factor1 + factor2);
+  }
+
+    // ============================================================================
+  // TEMPERATURE DELTA CALCULATIONS
+  // ============================================================================
+
+  /** Calculates the runway performance temperature correction in kg. */
+  private calculateRunwayTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.runwayTemperatureFactor[conf];
+
+    const runwayAltFactor = runwayLength - pressureAlt / 12;
+    let weightDelta = 1000 * (runwayAltFactor * tempFactors[0] + tempFactors[1]) * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta += 1000 * (runwayAltFactor * tempFactors[2] + tempFactors[3]) * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * (runwayAltFactor * tempFactors[4] + tempFactors[5]) * (temp - tMax);
+    }
+    return weightDelta;
+  }
+
+  /** Calculates the second segment temperature correction in kg. */
+  private calculateSecondSegmentTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.secondSegmentTemperatureFactor[conf];
+
+    let weightDelta =
+      1000 * ((runwayLength - pressureAlt / 5) * tempFactors[0] + tempFactors[1]) * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta +=
+        1000 * ((runwayLength - pressureAlt / 5) * tempFactors[2] + tempFactors[3]) * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * ((runwayLength - pressureAlt / 5) * tempFactors[4] + tempFactors[5]) * (temp - tMax);
+    }
+    return weightDelta;
+  }
+
+  /** Calculates the brake energy temperature correction in kg. */
+  private calculateBrakeEnergyTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.brakeEnergyTemperatureFactor[conf];
+
+    let weightDelta = 1000 * tempFactors[0] * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta += 1000 * tempFactors[1] * (Math.min(temp, tMax) - tRef);
+    }
+    // No correction above Tmax
+    return weightDelta;
+  }
+
+  /** Calculates the VMCG temperature correction in kg. */
+  private calculateVmcgTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.vmcgTemperatureFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * tempFactors[0] + tempFactors[1]) * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta += 1000 * (runwayLength * tempFactors[2] + tempFactors[3]) * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * (runwayLength * tempFactors[4] + tempFactors[5]) * (temp - tMax);
+    }
+    return weightDelta;
+  }
+
+  // ============================================================================
+  // WIND DELTA CALCULATIONS
+  // ============================================================================
+
+  /** Calculates the runway performance wind correction in kg, -ve is a positive increment on the limit weight. */
+  private calculateRunwayWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const windFactors =
+      wind >= 0
+        ? A380842TakeoffPerformanceCalculator.runwayHeadWindFactor[conf]
+        : A380842TakeoffPerformanceCalculator.runwayTailWindFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+    if (temp > tRef) {
+      weightDelta += 1000 * windFactors[2] * wind * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * windFactors[3] * wind * (temp - tMax);
+    }
+
+    // Cover edge case near the ends of the data
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+  /** Calculates the second segment wind correction in kg. */
+  private calculateSecondSegmentWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const windFactors =
+      wind >= 0
+        ? A380842TakeoffPerformanceCalculator.secondSegmentHeadWindFactor[conf]
+        : A380842TakeoffPerformanceCalculator.secondSegmentTailWindFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+    if (temp > tRef) {
+      weightDelta += 1000 * windFactors[2] * wind * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * windFactors[3] * wind * (temp - tMax);
+    }
+
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+  /** Calculates the brake energy wind correction in kg. */
+  private calculateBrakeEnergyWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const windFactors =
+      wind >= 0
+        ? A380842TakeoffPerformanceCalculator.brakeEnergyHeadWindFactor[conf]
+        : A380842TakeoffPerformanceCalculator.brakeEnergyTailWindFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+    if (temp > tRef) {
+      weightDelta += 1000 * windFactors[2] * wind * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * windFactors[3] * wind * (temp - tMax);
+    }
+
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+  /** Calculates the VMCG wind correction in kg. */
+  private calculateVmcgWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    let weightDelta: number;
+
+    if (wind >= 0) {
+      const windFactors = A380842TakeoffPerformanceCalculator.vmcgHeadWindFactor[conf];
+
+      weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+      if (temp > isaTemp) {
+        weightDelta +=
+          1000 * (runwayLength * windFactors[2] + windFactors[3]) * wind * (Math.min(temp, tRef) - isaTemp);
+      }
+      if (temp > tRef) {
+        weightDelta += 1000 * (runwayLength * windFactors[4] + windFactors[5]) * wind * (Math.min(temp, tMax) - tRef);
+      }
+      if (temp >= tMax) {
+        weightDelta += 1000 * (runwayLength * windFactors[6] + windFactors[7]) * wind * (temp - tMax);
+      }
+    } else {
+      const windFactors = A380842TakeoffPerformanceCalculator.vmcgTailWindFactor[conf];
+
+      weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+      if (temp > isaTemp) {
+        weightDelta +=
+          1000 * (runwayLength * windFactors[2] + windFactors[3]) * wind * (Math.min(temp, tRef) - isaTemp);
+      }
+      if (temp > tRef) {
+        weightDelta += 1000 * windFactors[4] * wind * (Math.min(temp, tMax) - tRef);
+      }
+      if (temp > tMax) {
+        weightDelta += 1000 * windFactors[5] * wind * (temp - tMax);
+      }
+    }
+
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+  // ============================================================================
+  // CONTAMINATED RUNWAY MTOW CALCULATION
+  // ============================================================================
+
+  private calculateContaminatedMtow(
+    result: Partial<TakeoffPerformanceResult>,
+    dryMtow: number,
+  ): number {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    let correctionFactors: Record<number, LerpLookupTable>;
+    let mtowFactors: Record<number, LerpLookupTable>;
+    let minCorrectedWeight: Record<number, number>;
+
+    switch (result.inputs.runwayCondition) {
+      case RunwayCondition.Contaminated6mmWater:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated6mmWater;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated6mmWater;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated6mmWater;
+        break;
+      case RunwayCondition.Contaminated13mmWater:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated13mmWater;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated13mmWater;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated13mmWater;
+        break;
+      case RunwayCondition.Contaminated6mmSlush:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated6mmSlush;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated6mmSlush;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated6mmSlush;
+        break;
+      case RunwayCondition.Contaminated13mmSlush:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated13mmSlush;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated13mmSlush;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated13mmSlush;
+        break;
+      case RunwayCondition.ContaminatedCompactedSnow:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminatedCompactedSnow;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminatedCompactedSnow;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminatedCompactedSnow;
+        break;
+      case RunwayCondition.Contaminated5mmWetSnow:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated5mmWetSnow;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated5mmWetSnow;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated5mmWetSnow;
+        break;
+      case RunwayCondition.Contaminated15mmWetSnow:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated15mmWetSnow;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated15mmWetSnow;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated15mmWetSnow;
+        break;
+      case RunwayCondition.Contaminated30mmWetSnow:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated30mmWetSnow;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated30mmWetSnow;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated30mmWetSnow;
+        break;
+      case RunwayCondition.Contaminated10mmDrySnow:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated10mmDrySnow;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated10mmDrySnow;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated10mmDrySnow;
+        break;
+      case RunwayCondition.Contaminated100mmDrySnow:
+        correctionFactors = A380842TakeoffPerformanceCalculator.weightCorrectionContaminated100mmDrySnow;
+        mtowFactors = A380842TakeoffPerformanceCalculator.mtowContaminated100mmDrySnow;
+        minCorrectedWeight = A380842TakeoffPerformanceCalculator.minCorrectedTowContaminated100mmDrySnow;
+        break;
+      default:
+        throw new Error('Invalid runway condition');
+    }
+
+    const correctedWeight = dryMtow - correctionFactors[result.inputs.conf].get(result.params.adjustedTora);
+    const mtow = mtowFactors[result.inputs.conf].get(correctedWeight);
+
+    const minimumTow = minCorrectedWeight[result.inputs.conf];
+    if (correctedWeight < minimumTow) {
+      result.error = TakeoffPerfomanceError.TooLight;
+    }
+
+    return mtow;
+  }
+
+  // ============================================================================
+  // FLEX TEMPERATURE CALCULATION
+  // ============================================================================
+
+  private calculateFlexTemp(
+    result: Partial<TakeoffPerformanceResult>,
+    tvmcg: number,
+  ): [number | undefined, LimitingFactor | undefined] {
+    if (
+      !result.inputs ||
+      !result.params ||
+      !result.limits ||
+      !result.tRefLimitingFactor ||
+      !result.tMaxLimitingFactor ||
+      !result.tFlexMaxLimitingFactor
+    ) {
+      throw new Error('Invalid result object!');
+    }
+
+    // We can use flex if TOW is below the tRef limit weight
+    if (result.inputs.tow < result.limits[result.tRefLimitingFactor].tRefLimit) {
+      let flexTemp: number | undefined;
+      let flexLimitingFactor: LimitingFactor | undefined;
+      let iterFrom: number;
+      let iterTo: number;
+      let fromLimitingFactor: LimitingFactor;
+      let fromLimitingWeights: LimitWeight;
+      let toLimitingFactor: LimitingFactor;
+      let toLimitingWeights: LimitWeight;
+
+      if (result.inputs.tow > result.limits[result.tMaxLimitingFactor].tMaxLimitNoBleed) {
+        iterFrom = result.params.tRef;
+        iterTo = result.params.tMax;
+        fromLimitingFactor = result.tRefLimitingFactor;
+        fromLimitingWeights = result.limits[result.tRefLimitingFactor];
+        toLimitingFactor = result.tMaxLimitingFactor;
+        toLimitingWeights = result.limits[result.tMaxLimitingFactor];
+      } else if (result.inputs.tow > result.limits[result.tFlexMaxLimitingFactor].tFlexMaxLimitNoBleed) {
+        iterFrom = result.params.tMax;
+        iterTo = result.params.tFlexMax;
+        fromLimitingFactor = result.tMaxLimitingFactor;
+        fromLimitingWeights = result.limits[result.tMaxLimitingFactor];
+        toLimitingFactor = result.tFlexMaxLimitingFactor;
+        toLimitingWeights = result.limits[result.tFlexMaxLimitingFactor];
+      } else {
+        iterFrom = result.params.tFlexMax;
+        iterTo = result.params.tFlexMax + 8;
+        fromLimitingFactor = result.tFlexMaxLimitingFactor;
+        fromLimitingWeights = result.limits[result.tFlexMaxLimitingFactor];
+        toLimitingFactor = result.tFlexMaxLimitingFactor;
+        toLimitingWeights = fromLimitingWeights;
+      }
+
+      for (let t = iterFrom; t <= iterTo; t++) {
+        const fromLimitTow = this.calculateFlexTow(result, fromLimitingFactor, fromLimitingWeights, t);
+        const toLimitTow = this.calculateFlexTow(result, toLimitingFactor, toLimitingWeights, t);
+        if (result.inputs.tow <= Math.min(fromLimitTow, toLimitTow)) {
+          flexTemp = t;
+          flexLimitingFactor = fromLimitTow <= toLimitTow ? fromLimitingFactor : toLimitingFactor;
+        }
+      }
+
+      if (flexTemp !== undefined && flexLimitingFactor !== undefined) {
+        if (result.inputs.antiIce === TakeoffAntiIceSetting.Engine) {
+          flexTemp -= 2;
+        } else if (result.inputs.antiIce === TakeoffAntiIceSetting.EngineWing) {
+          flexTemp -= 6;
+        }
+        if (result.inputs.packs) {
+          flexTemp -= 2;
+        }
+
+        flexTemp = Math.min(flexTemp, result.params.tFlexMax);
+        flexTemp = Math.trunc(flexTemp);
+
+        if (result.inputs.runwayCondition === RunwayCondition.Wet) {
+          const factors: ReadonlyFloat64Array = (
+            result.inputs.oat > tvmcg
+              ? A380842TakeoffPerformanceCalculator.wetFlexAdjustmentFactorsAboveTvmcg
+              : A380842TakeoffPerformanceCalculator.wetFlexAdjustmentFactorsAtOrBelowTvmcg
+          )[result.inputs.conf].get(A380842TakeoffPerformanceCalculator.vec4Cache, result.params.headwind);
+
+          const lengthAltCoef = result.params.adjustedTora - result.params.pressureAlt / 20;
+          const wetFlexAdjustment = Math.min(
+            0,
+            factors[0] * lengthAltCoef + factors[1],
+            factors[2] * lengthAltCoef + factors[3],
+          );
+          flexTemp -= wetFlexAdjustment;
+        }
+
+        if (flexTemp > result.inputs.oat) {
+          return [flexTemp, flexLimitingFactor];
+        }
+      }
+    }
+
+    return [undefined, undefined];
+  }
+
+  private calculateFlexTow(
+    result: Partial<TakeoffPerformanceResult>,
+    limitingFactor: LimitingFactor,
+    limitingWeights: LimitWeight,
+    temperature: number,
+  ): number {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    switch (limitingFactor) {
+      case LimitingFactor.Runway:
+        return (
+          limitingWeights.altLimit -
+          this.calculateRunwayTempDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.pressureAlt,
+            result.params.isaTemp,
+          ) -
+          this.calculateRunwayWindDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.isaTemp,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.headwind,
+          )
+        );
+      case LimitingFactor.SecondSegment:
+        return (
+          limitingWeights.altLimit -
+          this.calculateSecondSegmentTempDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.pressureAlt,
+            result.params.isaTemp,
+          ) -
+          this.calculateSecondSegmentWindDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.isaTemp,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.headwind,
+          )
+        );
+      case LimitingFactor.BrakeEnergy:
+        return (
+          limitingWeights.altLimit -
+          this.calculateBrakeEnergyTempDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.pressureAlt,
+            result.params.isaTemp,
+          ) -
+          this.calculateBrakeEnergyWindDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.isaTemp,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.headwind,
+          )
+        );
+      case LimitingFactor.Vmcg:
+        return (
+          limitingWeights.altLimit -
+          this.calculateVmcgTempDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.pressureAlt,
+            result.params.isaTemp,
+          ) -
+          this.calculateVmcgWindDelta(
+            temperature,
+            result.inputs.conf,
+            result.params.isaTemp,
+            result.params.tRef,
+            result.params.tMax,
+            result.params.tFlexMax,
+            result.params.adjustedTora,
+            result.params.headwind,
+          )
+        );
+    }
+    return 0;
+  }
+
+// To be continued - Part 9 (FINAL): V-speed calculations and utility methods...
