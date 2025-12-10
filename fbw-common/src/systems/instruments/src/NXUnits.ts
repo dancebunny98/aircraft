@@ -14,7 +14,7 @@ export class NXUnits {
 
   static get metricWeight() {
     if (NXUnits.metricWeightVal === undefined) {
-      NXDataStore.getAndSubscribeLegacy(
+      NXDataStore.getAndSubscribe(
         'CONFIG_USING_METRIC_UNIT',
         (key, value) => {
           NXUnits.metricWeightVal = value === '1';

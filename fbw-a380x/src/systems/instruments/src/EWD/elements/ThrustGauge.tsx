@@ -20,7 +20,7 @@ import {
   ThrottlePositionDonutComponent,
   ThrustTransientComponent,
 } from 'instruments/src/MsfsAvionicsCommon/gauges';
-import { AdrBusEvents, Arinc429ConsumerSubject, Arinc429LocalVarConsumerSubject } from '@flybywiresim/fbw-sdk';
+import { Arinc429ConsumerSubject, Arinc429LocalVarConsumerSubject } from '@flybywiresim/fbw-sdk';
 
 interface ThrustGaugeProps {
   bus: EventBus;
@@ -34,7 +34,7 @@ interface ThrustGaugeProps {
 const METOTS_N1_LIMIT = 76.5;
 
 export class ThrustGauge extends DisplayComponent<ThrustGaugeProps> {
-  private readonly sub = this.props.bus.getSubscriber<Arinc429Values & EwdSimvars & AdrBusEvents>();
+  private readonly sub = this.props.bus.getSubscriber<Arinc429Values & EwdSimvars>();
 
   private readonly n1 = ConsumerSubject.create(
     this.sub.on(`n1_${this.props.engine}`).withPrecision(2).whenChanged(),
@@ -174,31 +174,18 @@ export class ThrustGauge extends DisplayComponent<ThrustGaugeProps> {
 
   private readonly availRevText = this.availVisible.map((it) => (it ? 'AVAIL' : 'REV'));
 
-  private readonly airspeed1 = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_computed_airspeed_1'));
-  private readonly airspeed2 = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_computed_airspeed_2'));
-  private readonly airspeed3 = Arinc429LocalVarConsumerSubject.create(this.sub.on('adr_computed_airspeed_3'));
-  private readonly airspeed = MappedSubject.create(
-    ([airspeed1, airspeed2, airspeed3]) =>
-      !airspeed1.isFailureWarning()
-        ? airspeed1.valueOr(0)
-        : !airspeed2.isFailureWarning()
-          ? airspeed2.valueOr(0)
-          : airspeed3.valueOr(0),
-    this.airspeed1,
-    this.airspeed2,
-    this.airspeed3,
-  );
+  private readonly cas1 = Arinc429LocalVarConsumerSubject.create(this.sub.on('cas_1'));
 
   // FIXME replace with actual available thrust when ACUTE is implemented
   private readonly maxThrustAvail = MappedSubject.create(
     ([cas, thrustLimitIdle, thrustLimitMax, thrIdleOffset]) =>
-      cas < 35
+      cas.isNoComputedData() || cas.valueOr(100) < 35
         ? Math.max(
             thrIdleOffset * 100,
             ThrustGauge.thrustPercentFromN1(METOTS_N1_LIMIT, thrustLimitIdle, thrustLimitMax, thrIdleOffset),
           ) / 10
         : 10,
-    this.airspeed,
+    this.cas1,
     this.thrustLimitIdle,
     this.thrustLimitMax,
     this.thrIdleOffset,

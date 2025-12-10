@@ -42,8 +42,6 @@ class Prim {
   // Computer Self-monitoring vars
   bool monitoringHealthy;
 
-  bool selfTestFaultLightVisible;
-
   bool prevEngageButtonWasPressed;
 
   // Power Supply monitoring
@@ -63,5 +61,5 @@ class Prim {
 
   const double minimumPowerOutageTimeForFailure = 0.02;
   const double shortSelfTestDuration = 1;
-  const double longSelfTestDuration = 36;
+  const double longSelfTestDuration = 3;
 };

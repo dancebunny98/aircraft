@@ -63,9 +63,6 @@ interface InputFieldProps<T, U = T, S = T extends U ? true : false> extends Comp
   /** Used for OIT, where placeholders are [] for mandatory fields */
   overrideEmptyMandatoryPlaceholder?: string;
   // inViewEvent?: Consumer<boolean>; // Consider activating when we have a larger collision mesh for the screens
-
-  /* Whether to display the unit in a larger font size */
-  bigUnit?: boolean;
 }
 
 export type ConditionalInputFieldProps<T, U, S extends boolean> = S extends true
@@ -642,10 +639,7 @@ export class InputField<
     return (
       <div ref={this.topRef} class={`mfd-input-field-root ${this.props.class ?? ''}`}>
         <div ref={this.containerRef} class="mfd-input-field-container" style={`${this.props.containerStyle ?? ''}`}>
-          <span
-            ref={this.leadingUnitRef}
-            class={`mfd-label-unit ${this.props.bigUnit ? 'bigger' : ''} mfd-unit-leading mfd-input-field-unit`}
-          >
+          <span ref={this.leadingUnitRef} class="mfd-label-unit mfd-unit-leading mfd-input-field-unit">
             {this.leadingUnit}
           </span>
           <div
@@ -658,10 +652,7 @@ export class InputField<
             </span>
             <span ref={this.caretRef} class="mfd-input-field-caret" />
           </div>
-          <span
-            ref={this.trailingUnitRef}
-            class={`mfd-label-unit ${this.props.bigUnit ? 'bigger' : ''} mfd-unit-trailing mfd-input-field-unit`}
-          >
+          <span ref={this.trailingUnitRef} class="mfd-label-unit mfd-unit-trailing mfd-input-field-unit">
             {this.trailingUnit}
           </span>
         </div>

@@ -195,16 +195,13 @@ export class MfdFmsFplnVertRev extends FmsPage<MfdFmsFplnVertRevProps> {
   protected onNewData(): void {
     const pd = this.loadedFlightPlan?.performanceData;
 
-    const ta = pd?.transitionAltitude.get();
-    if (ta) {
-      this.transitionAltitude.set(ta);
+    if (pd?.transitionAltitude) {
+      this.transitionAltitude.set(pd.transitionAltitude);
     } else {
       this.transitionAltitude.set(null);
     }
-
-    const tl = pd?.transitionLevel.get();
-    if (tl) {
-      this.transitionLevel.set(tl * 100);
+    if (pd?.transitionLevel) {
+      this.transitionLevel.set(pd.transitionLevel * 100);
     } else {
       this.transitionLevel.set(null);
     }
@@ -234,7 +231,7 @@ export class MfdFmsFplnVertRev extends FmsPage<MfdFmsFplnVertRevProps> {
       this.selectedLegIndex = revWptIdx ?? null;
     }
 
-    this.crzFl.set(pd?.cruiseFlightLevel.get() ?? null);
+    this.crzFl.set(pd?.cruiseFlightLevel ?? null);
 
     this.updateConstraints();
     this.updateCruiseSteps();
@@ -284,24 +281,24 @@ export class MfdFmsFplnVertRev extends FmsPage<MfdFmsFplnVertRevProps> {
     const climbSpeedLimit = this.speedLimitType.get() === SpeedLimitType.CLB;
 
     const speedLimitSpeed = climbSpeedLimit
-      ? this.loadedFlightPlan.performanceData.climbSpeedLimitSpeed.get()
-      : this.loadedFlightPlan.performanceData.descentSpeedLimitSpeed.get();
+      ? this.loadedFlightPlan.performanceData.climbSpeedLimitSpeed
+      : this.loadedFlightPlan.performanceData.descentSpeedLimitSpeed;
 
     const speedLimitAltitude = climbSpeedLimit
-      ? this.loadedFlightPlan.performanceData.climbSpeedLimitAltitude.get()
-      : this.loadedFlightPlan.performanceData.descentSpeedLimitAltitude.get();
+      ? this.loadedFlightPlan.performanceData.climbSpeedLimitAltitude
+      : this.loadedFlightPlan.performanceData.descentSpeedLimitAltitude;
 
     this.speedLimitSpeed.set(speedLimitSpeed);
     this.speedLimitAltitude.set(speedLimitAltitude);
     this.speedLimitPilotEntered.set(
       climbSpeedLimit
-        ? this.loadedFlightPlan.performanceData.isClimbSpeedLimitPilotEntered.get()
-        : this.loadedFlightPlan.performanceData.isDescentSpeedLimitPilotEntered.get(),
+        ? this.loadedFlightPlan.performanceData.isClimbSpeedLimitPilotEntered
+        : this.loadedFlightPlan.performanceData.isDescentSpeedLimitPilotEntered,
     );
     this.speedLimitTransition.set(
       climbSpeedLimit
-        ? this.loadedFlightPlan.performanceData.transitionAltitude.get()
-        : this.loadedFlightPlan.performanceData.transitionLevel.get(),
+        ? this.loadedFlightPlan.performanceData.transitionAltitude
+        : this.loadedFlightPlan.performanceData.transitionLevel,
     );
 
     this.speedConstraintInput.set(leg.speedConstraint?.speed ?? null);

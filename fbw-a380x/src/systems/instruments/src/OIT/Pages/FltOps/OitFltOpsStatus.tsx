@@ -44,7 +44,7 @@ export class OitFltOpsStatus extends DisplayComponent<OitFltOpsStatusPageProps> 
                   freeTextAllowed={false}
                   containerStyle="width: 600px;"
                   alignLabels="center"
-                  numberOfDigitsForInputField={8}
+                  numberOfDigitsForInputField={6}
                   tmpyActive={Subject.create(false)}
                   hEventConsumer={this.props.container.hEventConsumer}
                   interactionMode={this.props.container.interactionMode}

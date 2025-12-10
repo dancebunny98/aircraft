@@ -37,11 +37,7 @@ import { MfdSimvars } from 'instruments/src/MFD/shared/MFDSimvarPublisher';
 import { VerticalCheckpointReason } from '@fmgc/guidance/vnav/profile/NavGeometryProfile';
 import { A380SpeedsUtils } from '@shared/OperatingSpeeds';
 import { NXSystemMessages } from '../../shared/NXSystemMessages';
-import {
-  getEtaFromUtcOrPresent as getEtaUtcOrFromPresent,
-  getApproachName,
-  showReturnButtonUriExtra,
-} from '../../shared/utils';
+import { getEtaFromUtcOrPresent as getEtaUtcOrFromPresent, getApproachName } from '../../shared/utils';
 import { ApproachType } from '@flybywiresim/fbw-sdk';
 import { FlapConf } from '@fmgc/guidance/vnav/common';
 import { MfdFmsFplnVertRev } from 'instruments/src/MFD/pages/FMS/F-PLN/MfdFmsFplnVertRev';
@@ -571,27 +567,27 @@ export class MfdFmsPerf extends FmsPage<MfdFmsPerfProps> {
       return;
     }
 
-    this.crzFl.set(pd.cruiseFlightLevel.get());
+    this.crzFl.set(pd.cruiseFlightLevel ?? null);
     this.crzFlIsMandatory.set(
       (this.props.fmcService.master?.fmgc.getFlightPhase() ?? FmgcFlightPhase.Preflight) < FmgcFlightPhase.Descent,
     );
 
-    this.costIndex.set(pd.costIndex.get());
+    this.costIndex.set(pd.costIndex ?? null);
 
-    this.toShift.set(fm.takeoffShift.get());
+    this.toShift.set(fm.takeoffShift.get() ?? null);
 
-    this.toV1.set(pd.v1.get());
+    this.toV1.set(pd.v1 ?? null);
 
-    this.toVR.set(pd.vr.get());
+    this.toVR.set(pd.vr ?? null);
 
-    this.toV2.set(pd.v2.get());
+    this.toV2.set(pd.v2 ?? null);
 
-    this.toSelectedThrustSettingIndex.set(fm.takeoffPowerSetting.get());
-    this.showToThrustSettings(fm.takeoffPowerSetting.get());
+    this.toSelectedThrustSettingIndex.set(fm.takeoffPowerSetting.get() ?? null);
+    this.showToThrustSettings(fm.takeoffPowerSetting.get() ?? null);
 
-    this.toFlexTemp.set(fm.takeoffFlexTemp.get());
+    this.toFlexTemp.set(fm.takeoffFlexTemp.get() ?? null);
 
-    this.toSelectedDeratedIndex.set(fm.takeoffDeratedSetting.get());
+    this.toSelectedDeratedIndex.set(fm.takeoffDeratedSetting.get() ?? null);
 
     if (fm.takeoffFlapsSetting !== undefined && fm.takeoffFlapsSetting.get() !== null) {
       this.toSelectedFlapsIndex.set(fm.takeoffFlapsSetting.get() - 1);
@@ -599,31 +595,43 @@ export class MfdFmsPerf extends FmsPage<MfdFmsPerfProps> {
       this.toSelectedFlapsIndex.set(null);
     }
 
-    this.toSelectedPacksIndex.set(fm.takeoffPacks.get());
+    this.toSelectedPacksIndex.set(fm.takeoffPacks.get() ?? null);
 
-    this.toSelectedAntiIceIndex.set(fm.takeoffAntiIce.get());
+    this.toSelectedAntiIceIndex.set(fm.takeoffAntiIce.get() ?? null);
 
-    this.thrRedAltIsPilotEntered.set(pd.thrustReductionAltitudeIsPilotEntered.get());
+    if (pd.thrustReductionAltitudeIsPilotEntered) {
+      this.thrRedAltIsPilotEntered.set(pd.thrustReductionAltitudeIsPilotEntered);
+    }
 
-    this.thrRedAlt.set(pd.thrustReductionAltitude.get());
+    this.thrRedAlt.set(pd.thrustReductionAltitude ?? null);
 
-    this.accelRedAltIsPilotEntered.set(pd.accelerationAltitudeIsPilotEntered.get());
+    if (pd.accelerationAltitudeIsPilotEntered) {
+      this.accelRedAltIsPilotEntered.set(pd.accelerationAltitudeIsPilotEntered);
+    }
 
-    this.accelAlt.set(pd.accelerationAltitude.get());
+    this.accelAlt.set(pd.accelerationAltitude ?? null);
 
-    this.showNoiseFields(fm.noiseEnabled.get());
+    if (fm.noiseEnabled) {
+      this.showNoiseFields(fm.noiseEnabled.get());
+    }
 
-    this.noiseEndAlt.set(fm.noiseEndAltitude.get());
+    this.noiseEndAlt.set(fm.noiseEndAltitude.get() ?? null);
 
-    this.transAltIsPilotEntered.set(!pd.transitionAltitudeIsFromDatabase.get());
+    if (pd.transitionAltitudeIsFromDatabase) {
+      this.transAltIsPilotEntered.set(!pd.transitionAltitudeIsFromDatabase);
+    }
 
-    this.transAlt.set(pd.transitionAltitude.get());
+    this.transAlt.set(pd.transitionAltitude ?? null);
 
-    this.eoAccelAltIsPilotEntered.set(pd.engineOutAccelerationAltitudeIsPilotEntered.get());
+    if (pd.engineOutAccelerationAltitudeIsPilotEntered) {
+      this.eoAccelAltIsPilotEntered.set(pd.engineOutAccelerationAltitudeIsPilotEntered);
+    }
 
-    this.eoAccelAlt.set(pd.engineOutAccelerationAltitude.get());
+    this.eoAccelAlt.set(pd.engineOutAccelerationAltitude ?? null);
 
-    this.thrRedAltIsPilotEntered.set(pd.thrustReductionAltitudeIsPilotEntered.get());
+    if (pd.thrustReductionAltitudeIsPilotEntered) {
+      this.thrRedAltIsPilotEntered.set(pd.thrustReductionAltitudeIsPilotEntered);
+    }
 
     this.activeFlightPhase.set(SimVar.GetSimVarValue('L:A32NX_FMGC_FLIGHT_PHASE', 'Enum'));
 
@@ -653,21 +661,31 @@ export class MfdFmsPerf extends FmsPage<MfdFmsPerfProps> {
       this.apprSelectedFlapsIndex.set(fm.approachFlapConfig.get() === 3 ? 0 : 1);
     }
 
-    this.missedThrRedAltIsPilotEntered.set(pd.missedThrustReductionAltitudeIsPilotEntered.get());
+    if (pd.missedThrustReductionAltitudeIsPilotEntered) {
+      this.missedThrRedAltIsPilotEntered.set(pd.missedThrustReductionAltitudeIsPilotEntered);
+    }
 
-    this.missedAccelRedAltIsPilotEntered.set(pd.missedAccelerationAltitudeIsPilotEntered.get());
+    if (pd.missedAccelerationAltitudeIsPilotEntered) {
+      this.missedAccelRedAltIsPilotEntered.set(pd.missedAccelerationAltitudeIsPilotEntered);
+    }
 
-    this.missedEngineOutAccelAltIsPilotEntered.set(pd.missedEngineOutAccelerationAltitudeIsPilotEntered.get());
+    if (pd.missedEngineOutAccelerationAltitudeIsPilotEntered) {
+      this.missedEngineOutAccelAltIsPilotEntered.set(pd.missedEngineOutAccelerationAltitudeIsPilotEntered);
+    }
 
-    this.missedEngineOutAccelAlt.set(pd.missedEngineOutAccelerationAltitude.get());
+    this.missedEngineOutAccelAlt.set(pd.missedEngineOutAccelerationAltitude ?? null);
 
-    this.missedThrRedAlt.set(pd.missedThrustReductionAltitude.get());
+    if (pd.missedThrustReductionAltitude) {
+      this.missedThrRedAlt.set(pd.missedThrustReductionAltitude);
+    }
 
-    this.missedAccelAlt.set(pd.missedAccelerationAltitude.get());
+    this.missedAccelAlt.set(pd.missedAccelerationAltitude ?? null);
 
-    this.transFlIsPilotEntered.set(!pd.transitionLevelIsFromDatabase.get());
+    if (pd.transitionLevelIsFromDatabase) {
+      this.transFlIsPilotEntered.set(!pd.transitionLevelIsFromDatabase);
+    }
 
-    this.transFl.set(pd.transitionLevel.get());
+    this.transFl.set(pd.transitionLevel ?? null);
 
     const vDev = this.props.fmcService.master?.guidanceController.vnavDriver.getLinearDeviation();
     if (this.activeFlightPhase.get() >= FmgcFlightPhase.Descent && vDev != null) {
@@ -2931,13 +2949,7 @@ export class MfdFmsPerf extends FmsPage<MfdFmsPerfProps> {
                 />
               </div>
               <div>
-                <Button
-                  label="POS MONITOR"
-                  onClick={() =>
-                    this.props.mfd.uiService.navigateTo(`fms/position/monitor/${showReturnButtonUriExtra}`)
-                  }
-                  containerStyle="margin-right: 5px;"
-                />
+                <Button label="POS MONITOR" onClick={() => {}} containerStyle="margin-right: 5px;" />
               </div>
               <div style={{ 'margin-right': '5px', visibility: this.clearEoButtonVisibility }}>
                 <Button

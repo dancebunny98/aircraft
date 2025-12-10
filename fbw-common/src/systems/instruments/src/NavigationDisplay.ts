@@ -119,54 +119,52 @@ export type VdSymbol = Omit<InternalFmsSymbol, 'radials' | 'radii'>;
  *
  * **NOTE:** this does not necessarily represent the current function of a transmitted flight plan. Those groups are sometimes used for other purposes than their name
  * refers to, for example the DASHED flight plan being used to transmit the non-offset path of an active flight plan with an offset applied.
- *
- * The value of each group is used to determine the drawing order. Low values are drawn first, high values last.
  */
 export enum EfisVectorsGroup {
   /**
    * Solid green line
    */
-  ACTIVE = 2,
+  ACTIVE,
 
   /**
    * Dashed green line
    */
-  DASHED = 3,
+  DASHED,
 
   /**
    * Dashed green line
    */
-  OFFSET = 4,
+  OFFSET,
 
   /**
    * Dashed yellow line
    */
-  TEMPORARY = 5,
+  TEMPORARY,
 
   /**
    * Dimmed white line
    */
-  SECONDARY = 0,
+  SECONDARY,
 
   /**
    * Dashed dimmed white line
    */
-  SECONDARY_DASHED = 1,
+  SECONDARY_DASHED,
 
   /**
    * Solid cyan line
    */
-  MISSED = 6,
+  MISSED,
 
   /**
    * Dashed cyan line
    */
-  ALTERNATE = 7,
+  ALTERNATE,
 
   /**
    * Continuous yellow line
    */
-  ACTIVE_EOSID = 8,
+  ACTIVE_EOSID,
 }
 
 export interface NdTraffic {

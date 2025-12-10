@@ -1,18 +1,14 @@
 // Copyright (c) 2023-2024 FlyByWire Simulations
 // SPDX-License-Identifier: GPL-3.0
 
-// @ts-ignore - react types are available at runtime
 import React from 'react';
 import { render } from '@instruments/common/index';
 import { AircraftContext, EfbWrapper, syncSettingsFromPersistentStorage } from '@flybywiresim/flypad';
 import { A380FailureDefinitions } from '../../../failures';
-import { A380842LandingCalculator } from '@shared/performance/a380x_landing';
-import { A380842TakeoffPerformanceCalculator } from '@shared/performance/a380x_takeoff';
 import { AutomaticCallOutsPage } from './Pages/AutomaticCallOutsPage';
 import { a380xSyncedSettings } from 'instruments/src/EFB/settingsSync';
 
 import './Efb.scss';
-// @ts-ignore - msfs-sdk types are available at runtime
 import { EventBus } from '@microsoft/msfs-sdk';
 
 function aircraftEfbSetup(): void {
@@ -25,8 +21,8 @@ render(
   <AircraftContext.Provider
     value={{
       performanceCalculators: {
-        takeoff: new A380842TakeoffPerformanceCalculator(),
-        landing: new A380842LandingCalculator(),
+        takeoff: null,
+        landing: null,
       },
       pushbackPage: {
         turnIndicatorTuningDefault: 1.35,

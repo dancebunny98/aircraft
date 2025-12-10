@@ -87,20 +87,8 @@ void Prim::updateSelfTest(double deltaTime) {
   }
   if (selfTestTimer <= 0) {
     selfTestComplete = true;
-    selfTestFaultLightVisible = false;
   } else {
     selfTestComplete = false;
-
-    // Hardcoded test light sequence. Between the times (in seconds) in each array, the light is on.
-    selfTestFaultLightVisible = false;
-    double constexpr testLightOnTimes[][2] = {{0, 12.29}, {13.42, 28.67}, {31.04, 31.63}, {31.71, 33.13}, {33.21, 35.75}};
-    for (auto& timeRange : testLightOnTimes) {
-      double selfTestTimerFromStart = longSelfTestDuration - selfTestTimer;
-      if (selfTestTimerFromStart >= timeRange[0] && selfTestTimerFromStart <= timeRange[1]) {
-        selfTestFaultLightVisible = true;
-        break;
-      }
-    }
   }
 }
 
@@ -176,7 +164,7 @@ base_prim_out_bus Prim::getBusOutputs() {
 base_prim_discrete_outputs Prim::getDiscreteOutputs() {
   base_prim_discrete_outputs output = {};
 
-  output.prim_healthy = (selfTestComplete && monitoringHealthy) || (!selfTestComplete && !selfTestFaultLightVisible);
+  output.prim_healthy = monitoringHealthy;
   if (!monitoringHealthy) {
     output.elevator_1_active_mode = false;
     output.elevator_2_active_mode = false;

@@ -304,7 +304,7 @@ export class FlightManagementComputer implements FmcInterface {
           if (
             val &&
             this.flightPlanService.hasActive &&
-            !Number.isFinite(this.flightPlanService.active.performanceData.costIndex.get())
+            !Number.isFinite(this.flightPlanService.active.performanceData.costIndex)
           ) {
             this.flightPlanService.active.setPerformanceData('costIndex', 0);
             this.addMessageToQueue(NXSystemMessages.costIndexInUse.getModifiedMessage('000'));
@@ -748,21 +748,19 @@ export class FlightManagementComputer implements FmcInterface {
         const plan = this.flightPlanService.active;
         const pd = this.fmgc.data;
 
-        if (!plan.performanceData.accelerationAltitude.get()) {
+        if (!plan.performanceData.accelerationAltitude) {
           // it's important to set this immediately as we don't want to immediately sequence to the climb phase
           plan.setPerformanceData(
             'pilotAccelerationAltitude',
-            SimVar.GetSimVarValue('INDICATED ALTITUDE', 'feet') +
-              parseInt(NXDataStore.getLegacy('CONFIG_ACCEL_ALT', '1500')),
+            SimVar.GetSimVarValue('INDICATED ALTITUDE', 'feet') + parseInt(NXDataStore.get('CONFIG_ACCEL_ALT', '1500')),
           );
           this.acInterface.updateThrustReductionAcceleration();
         }
-        if (!plan.performanceData.engineOutAccelerationAltitude.get()) {
+        if (!plan.performanceData.engineOutAccelerationAltitude) {
           // it's important to set this immediately as we don't want to immediately sequence to the climb phase
           plan.setPerformanceData(
             'pilotEngineOutAccelerationAltitude',
-            SimVar.GetSimVarValue('INDICATED ALTITUDE', 'feet') +
-              parseInt(NXDataStore.getLegacy('CONFIG_ACCEL_ALT', '1500')),
+            SimVar.GetSimVarValue('INDICATED ALTITUDE', 'feet') + parseInt(NXDataStore.get('CONFIG_ACCEL_ALT', '1500')),
           );
           this.acInterface.updateThrustReductionAcceleration();
         }
@@ -802,7 +800,7 @@ export class FlightManagementComputer implements FmcInterface {
         const cruisePreSelMach = this.fmgc.data.cruisePreSelMach.get();
         this.acInterface.updatePreSelSpeedMach(cruisePreSelMach ?? cruisePreSel);
 
-        if (!this.flightPlanService.active.performanceData.cruiseFlightLevel.get()) {
+        if (!this.flightPlanService.active.performanceData.cruiseFlightLevel) {
           this.flightPlanService.active.setPerformanceData(
             'cruiseFlightLevel',
             (Simplane.getAutoPilotDisplayedAltitudeLockValue('feet') ?? 0) / 100,
@@ -876,21 +874,21 @@ export class FlightManagementComputer implements FmcInterface {
         );
 
         const activePlan = this.flightPlanService.active;
-        if (!activePlan.performanceData.missedAccelerationAltitude.get()) {
+        if (!activePlan.performanceData.missedAccelerationAltitude) {
           // it's important to set this immediately as we don't want to immediately sequence to the climb phase
           activePlan.setPerformanceData(
             'pilotMissedAccelerationAltitude',
             SimVar.GetSimVarValue('INDICATED ALTITUDE', 'feet') +
-              parseInt(NXDataStore.getLegacy('CONFIG_ENG_OUT_ACCEL_ALT', '1500')),
+              parseInt(NXDataStore.get('CONFIG_ENG_OUT_ACCEL_ALT', '1500')),
           );
           this.acInterface.updateThrustReductionAcceleration();
         }
-        if (!activePlan.performanceData.missedEngineOutAccelerationAltitude.get()) {
+        if (!activePlan.performanceData.missedEngineOutAccelerationAltitude) {
           // it's important to set this immediately as we don't want to immediately sequence to the climb phase
           activePlan.setPerformanceData(
             'pilotMissedEngineOutAccelerationAltitude',
             SimVar.GetSimVarValue('INDICATED ALTITUDE', 'feet') +
-              parseInt(NXDataStore.getLegacy('CONFIG_ENG_OUT_ACCEL_ALT', '1500')),
+              parseInt(NXDataStore.get('CONFIG_ENG_OUT_ACCEL_ALT', '1500')),
           );
           this.acInterface.updateThrustReductionAcceleration();
         }

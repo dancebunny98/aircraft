@@ -22,12 +22,10 @@ import { NXFictionalMessages } from 'instruments/src/MFD/shared/NXSystemMessages
 import { A380AltitudeUtils } from '@shared/OperatingAltitudes';
 import { AtsuStatusCodes } from '@datalink/common';
 import { FmsRouterMessages } from '@datalink/router';
-import { FlightPlanIndex } from '@fmgc/flightplanning/FlightPlanManager';
-import { CostIndexMode } from '../../FMC/fmgc';
-import { DropdownMenu } from 'instruments/src/MsfsAvionicsCommon/UiWidgets/DropdownMenu';
-import { showReturnButtonUriExtra } from '../../shared/utils';
 
 import './MfdFmsInit.scss';
+import { CostIndexMode } from '../../FMC/fmgc';
+import { DropdownMenu } from 'instruments/src/MsfsAvionicsCommon/UiWidgets/DropdownMenu';
 
 interface MfdFmsInitProps extends AbstractMfdPageProps {}
 
@@ -209,16 +207,15 @@ export class MfdFmsInit extends FmsPage<MfdFmsInitProps> {
       this.altnIcao.set(this.loadedFlightPlan.originAirport && this.loadedFlightPlan.destinationAirport ? 'NONE' : '');
     }
 
-    this.crzFl.set(this.loadedFlightPlan.performanceData.cruiseFlightLevel.get());
+    this.crzFl.set(this.loadedFlightPlan.performanceData.cruiseFlightLevel);
     this.crzFlIsMandatory.set(this.props.fmcService.master.fmgc.getFlightPhase() < FmgcFlightPhase.Descent);
-    const cruiseLevel = this.loadedFlightPlan.performanceData.cruiseFlightLevel.get();
-    if (cruiseLevel) {
+    if (this.loadedFlightPlan.performanceData.cruiseFlightLevel) {
       this.props.fmcService.master.fmgc.data.cruiseTemperatureIsaTemp.set(
-        A380AltitudeUtils.getIsaTemp(cruiseLevel * 100),
+        A380AltitudeUtils.getIsaTemp(this.loadedFlightPlan.performanceData.cruiseFlightLevel * 100),
       );
     }
 
-    this.costIndex.set(this.loadedFlightPlan.performanceData.costIndex.get());
+    this.costIndex.set(this.loadedFlightPlan.performanceData.costIndex);
 
     // Set some empty fields with pre-defined values
     if (this.fromIcao.get() && this.toIcao.get()) {
@@ -237,8 +234,8 @@ export class MfdFmsInit extends FmsPage<MfdFmsInitProps> {
       return;
     }
 
-    const navigraphUsername = NXDataStore.getLegacy('NAVIGRAPH_USERNAME', '');
-    const overrideSimBriefUserID = NXDataStore.getLegacy('CONFIG_OVERRIDE_SIMBRIEF_USERID', '');
+    const navigraphUsername = NXDataStore.get('NAVIGRAPH_USERNAME', '');
+    const overrideSimBriefUserID = NXDataStore.get('CONFIG_OVERRIDE_SIMBRIEF_USERID', '');
 
     if (!navigraphUsername && !overrideSimBriefUserID) {
       this.props.fmcService.master.addMessageToQueue(NXFictionalMessages.noNavigraphUser, undefined, undefined);
@@ -251,7 +248,6 @@ export class MfdFmsInit extends FmsPage<MfdFmsInitProps> {
       SimBriefUplinkAdapter.uplinkFlightPlanFromSimbrief(
         this.props.fmcService.master,
         this.props.fmcService.master.flightPlanService,
-        FlightPlanIndex.Active,
         this.simBriefOfp,
         { doUplinkProcedures: false },
       );
@@ -622,7 +618,7 @@ export class MfdFmsInit extends FmsPage<MfdFmsInitProps> {
             </div>
             <Button
               label="NAVAIDS"
-              onClick={() => this.props.mfd.uiService.navigateTo(`fms/position/navaids/${showReturnButtonUriExtra}`)}
+              onClick={() => this.props.mfd.uiService.navigateTo('fms/position/navaids')}
               buttonStyle="width: 160px; margin-left: 150px; margin-bottom: 10px;"
             />
             <Button

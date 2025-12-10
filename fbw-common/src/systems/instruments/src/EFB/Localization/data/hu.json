@@ -596,7 +596,7 @@
       "Select": "Kiválaszt",
       "ThrustReductionHeight": "Tolóerő csökkentési magasság (ft)",
       "Title": "Repülő beállításai / programok kitűzése",
-      "WeightUnit": "US mértékegység"
+      "WeightUnit": "Súly Egység"
     },
     "AtsuAoc": {
       "AtisAtcSource": "ATIS/ATC forrás",

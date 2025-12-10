@@ -955,11 +955,6 @@ void EngineControl_A380X::updateThrustLimits(double simulationTime,
 
   const double flexTemp      = simData.airlinerToFlexTemp->get();
   const double pressAltitude = simData.simVarsDataPtr->data().pressureAltitude;
-  const double thrustLimitType = simData.thrustLimitType->get();
-
-  if (!isTransitionActive && thrustLimitType != 3 /* FLEX */) {
-    latchedFlexTemperature = flexTemp;
-  }
 
   // Write all N1 Limits
   const double altitude = std::min(16600.0, pressAltitude);
@@ -967,9 +962,9 @@ void EngineControl_A380X::updateThrustLimits(double simulationTime,
   const double ga       = ThrustLimits_A380X::limitN1(1, altitude, ambientTemperature, ambientPressure, 0, packs, nai, wai);
   double       flex_to  = 0;
   double       flex_ga  = 0;
-  if (latchedFlexTemperature > 0) {
-    flex_to = ThrustLimits_A380X::limitN1(0, altitude, ambientTemperature, ambientPressure, latchedFlexTemperature, packs, nai, wai);
-    flex_ga = ThrustLimits_A380X::limitN1(1, altitude, ambientTemperature, ambientPressure, latchedFlexTemperature, packs, nai, wai);
+  if (flexTemp > 0) {
+    flex_to = ThrustLimits_A380X::limitN1(0, altitude, ambientTemperature, ambientPressure, flexTemp, packs, nai, wai);
+    flex_ga = ThrustLimits_A380X::limitN1(1, altitude, ambientTemperature, ambientPressure, flexTemp, packs, nai, wai);
   }
   double clb = ThrustLimits_A380X::limitN1(2, pressAltitude, ambientTemperature, ambientPressure, 0, packs, nai, wai);
   double mct = ThrustLimits_A380X::limitN1(3, pressAltitude, ambientTemperature, ambientPressure, 0, packs, nai, wai);
@@ -980,9 +975,10 @@ void EngineControl_A380X::updateThrustLimits(double simulationTime,
   double       toga          = to + (ga - to) * machFactorLow;
 
   // adaption of CLB due to FLX limit if necessary ------------------------------------------------------------------
-  if (prevThrustLimitType != 3 && thrustLimitType == 3) {
+  const double thrustLimitType = simData.thrustLimitType->get();
+  if ((prevThrustLimitType != 3 && thrustLimitType == 3) || (prevFlexTemperature == 0 && flexTemp > 0)) {
     wasFlexActive = true;
-  } else if (thrustLimitType == 4) {
+  } else if ((flexTemp == 0) || (thrustLimitType == 4)) {
     wasFlexActive = false;
   }
 
@@ -1009,6 +1005,7 @@ void EngineControl_A380X::updateThrustLimits(double simulationTime,
   }
 
   prevThrustLimitType = thrustLimitType;
+  prevFlexTemperature = flexTemp;
 
   // thrust transitions for MCT and TOGA ----------------------------------------------------------------------------
 

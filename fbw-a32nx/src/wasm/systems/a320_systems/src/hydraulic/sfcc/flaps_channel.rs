@@ -1,12 +1,7 @@
-use std::time::Duration;
-
 use crate::systems::shared::arinc429::{Arinc429Word, SignStatus};
 use systems::hydraulic::command_sensor_unit::{CSUMonitor, CSU};
 use systems::hydraulic::flap_slat::{ChannelCommand, SolenoidStatus, ValveBlock};
-use systems::shared::{
-    AdirsMeasurementOutputs, DelayedFalseLogicGate, DelayedPulseTrueLogicGate, ElectricalBusType,
-    ElectricalBuses, PositionPickoffUnit,
-};
+use systems::shared::{AdirsMeasurementOutputs, PositionPickoffUnit};
 
 use systems::simulation::{
     InitContext, SimulationElement, SimulationElementVisitor, SimulatorWriter, UpdateContext,
@@ -16,7 +11,7 @@ use systems::simulation::{
 use uom::si::{angle::degree, f64::*, velocity::knot};
 use uom::ConstZero;
 
-use super::utils::SlatFlapControlComputerMisc;
+use super::SlatFlapControlComputerMisc;
 
 pub(super) struct FlapsChannel {
     flaps_fppu_angle_id: VariableIdentifier,
@@ -25,11 +20,6 @@ pub(super) struct FlapsChannel {
 
     flaps_demanded_angle: Angle,
     flaps_feedback_angle: Angle,
-
-    powered_by: ElectricalBusType,
-    is_powered: bool,
-    is_powered_delayed: DelayedFalseLogicGate,
-    recovered_power_pulse: DelayedPulseTrueLogicGate,
 
     csu_monitor: CSUMonitor,
 
@@ -47,14 +37,12 @@ pub(super) struct FlapsChannel {
 }
 
 impl FlapsChannel {
-    // Check the comments in `SlatFlapControlComputer` for a description of `TRANSPARENCY_TIME`
-    const TRANSPARENCY_TIME: Duration = Duration::from_millis(200); //ms
     const FLAP_CONF1_FPPU_ANGLE: f64 = 0.; //deg
     const FLAP_CONF1F_FPPU_ANGLE: f64 = 120.21; //deg
     const KNOTS_100: f64 = 100.;
     const KNOTS_210: f64 = 210.;
 
-    pub(super) fn new(context: &mut InitContext, num: u8, powered_by: ElectricalBusType) -> Self {
+    pub(super) fn new(context: &mut InitContext, num: u8) -> Self {
         Self {
             flaps_fppu_angle_id: context.get_identifier("FLAPS_FPPU_ANGLE".to_owned()),
             flap_actual_position_word_id: context
@@ -64,12 +52,6 @@ impl FlapsChannel {
 
             flaps_demanded_angle: Angle::ZERO,
             flaps_feedback_angle: Angle::ZERO,
-
-            powered_by,
-            is_powered: false,
-            is_powered_delayed: DelayedFalseLogicGate::new(Self::TRANSPARENCY_TIME)
-                .starting_as(false),
-            recovered_power_pulse: DelayedPulseTrueLogicGate::new(Duration::ZERO),
 
             csu_monitor: CSUMonitor::new(context),
 
@@ -88,11 +70,6 @@ impl FlapsChannel {
     }
 
     fn fap_update(&mut self) {
-        if !self.is_powered_delayed.output() {
-            self.fap = [false; 7];
-            return;
-        }
-
         let fppu_angle = self.flaps_feedback_angle.get::<degree>();
 
         self.fap[0] = fppu_angle > 247.8 && fppu_angle < 254.0;
@@ -118,16 +95,6 @@ impl FlapsChannel {
         }
     }
 
-    fn get_cas(
-        &self,
-        adirs: &impl AdirsMeasurementOutputs,
-    ) -> (Option<Velocity>, Option<Velocity>) {
-        let cas1 = adirs.computed_airspeed(1).normal_value();
-        let cas2 = adirs.computed_airspeed(2).normal_value();
-
-        (cas1.or(cas2), cas2.or(cas1))
-    }
-
     fn update_flap_auto_command(&mut self, adirs: &impl AdirsMeasurementOutputs) {
         if self.csu_monitor.get_last_valid_detent() != CSU::Conf1 {
             self.flap_auto_command_active = false;
@@ -138,18 +105,25 @@ impl FlapsChannel {
         let previous_detent = self.csu_monitor.get_previous_detent();
         let current_detent = self.csu_monitor.get_current_detent();
 
+        let cas1 = adirs.computed_airspeed(1).normal_value();
+        let cas2 = adirs.computed_airspeed(2).normal_value();
+
+        let (cas1, cas2) = match (cas1, cas2) {
+            (Some(cas1), Some(cas2)) => (Some(cas1), Some(cas2)),
+            (Some(cas1), None) => (Some(cas1), Some(cas1)),
+            (None, Some(cas2)) => (Some(cas2), Some(cas2)),
+            (None, None) => (None, None),
+        };
+
         // The match can be shortened by a convoluted if statement however
         // I believe it would make debugging and understanding the state machine harder
-        match self.get_cas(adirs) {
-            // If CAS from both ADIRUs <= 100, flaps 1+F
+        match (cas1, cas2) {
             (Some(cas1), Some(cas2)) if cas1 <= self.kts_100 && cas2 <= self.kts_100 => {
                 self.flap_auto_command_angle = self.conf1f_flaps
             }
-            // If CAS from both ADIRUs >= 210, flaps 0
             (Some(cas1), Some(cas2)) if cas1 >= self.kts_210 && cas2 >= self.kts_210 => {
                 self.flap_auto_command_angle = self.conf1_flaps
             }
-            // If CAS of at least one ADIRU is > 100 and flaps lever has been extended to 1 and flaps are near 0, flaps 0
             (Some(cas1), _)
                 if previous_detent == CSU::Conf0
                     && current_detent == CSU::Conf1
@@ -174,7 +148,6 @@ impl FlapsChannel {
             {
                 self.flap_auto_command_angle = self.conf1_flaps
             }
-            // If CAS of at least one ADIRU is < 210 and flaps lever has been retracted to 1 and flaps are extended, flaps 1+F
             (Some(cas1), _)
                 if (previous_detent == CSU::Conf2
                     || previous_detent == CSU::Conf3
@@ -203,7 +176,6 @@ impl FlapsChannel {
             {
                 self.flap_auto_command_angle = self.conf1f_flaps
             }
-            // If CAS of at least one ADIRU is > 100 and flaps lever has been retracted to 1 and flaps are extended, flaps 1
             (Some(cas1), _)
                 if (previous_detent == CSU::Conf2
                     || previous_detent == CSU::Conf3
@@ -232,7 +204,6 @@ impl FlapsChannel {
             {
                 self.flap_auto_command_angle = self.conf1_flaps
             }
-            // If CAS of at least one ADIRU is < 210 and flaps lever has been extended to 1 and flaps are extended, flaps 1+F
             (Some(cas1), _)
                 if previous_detent == CSU::Conf0
                     && current_detent == CSU::Conf1
@@ -260,10 +231,8 @@ impl FlapsChannel {
             // If the following cases are moved at the top, then the other cases are never hit.
             // They can be simplified in a single case statement but for clarity
             // they are kept separate.
-            // If CAS of at least one ADIRU is > 100 and < 210, no change to flaps
             (Some(cas1), _) if cas1 > self.kts_100 && cas1 < self.kts_210 => (),
             (_, Some(cas2)) if cas2 > self.kts_100 && cas2 < self.kts_210 => (),
-            // If CAS of one ADIRU <= 100 and the other >= 210, no change to flaps
             (Some(cas1), Some(cas2))
                 if (cas1 <= self.kts_100 && cas2 >= self.kts_210)
                     || (cas1 >= self.kts_210 && cas2 <= self.kts_100) => {}
@@ -283,128 +252,7 @@ impl FlapsChannel {
             );
     }
 
-    fn powerup_reset(&mut self, adirs: &impl AdirsMeasurementOutputs) {
-        // Auto Command restart
-        if self.csu_monitor.get_last_valid_detent() != CSU::Conf1 {
-            self.flap_auto_command_active = false;
-        } else {
-            // The match can be shortened by a convoluted if statement however
-            // I believe it would make debugging and understanding the state machine harder
-            match self.get_cas(adirs) {
-                // If one CAS <= 100 and other CAS >= 210 and flaps near 0 deg, flaps 0
-                (Some(cas1), Some(cas2))
-                    if ((cas1 <= self.kts_100 && cas2 >= self.kts_210)
-                        || (cas1 >= self.kts_210 && cas2 <= self.kts_100))
-                        && SlatFlapControlComputerMisc::in_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                            self.conf1_flaps,
-                        ) =>
-                {
-                    self.flap_auto_command_angle = self.conf1_flaps
-                }
-                // If one CAS <= 100 and other CAS >= 210 and flaps extended, flaps 1+F
-                (Some(cas1), Some(cas2))
-                    if ((cas1 <= self.kts_100 && cas2 >= self.kts_210)
-                        || (cas1 >= self.kts_210 && cas2 <= self.kts_100))
-                        && SlatFlapControlComputerMisc::in_or_above_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                            self.conf1f_flaps,
-                        ) =>
-                {
-                    self.flap_auto_command_angle = self.conf1f_flaps
-                }
-                // If at least one CAS > 100 and < 210 and flaps extended, flaps 1+F
-                (Some(cas1), _)
-                    if cas1 > self.kts_100
-                        && cas1 < self.kts_210
-                        && SlatFlapControlComputerMisc::in_or_above_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                            self.conf1f_flaps,
-                        ) =>
-                {
-                    self.flap_auto_command_angle = self.conf1f_flaps
-                }
-                (_, Some(cas2))
-                    if cas2 > self.kts_100
-                        && cas2 < self.kts_210
-                        && SlatFlapControlComputerMisc::in_or_above_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                            self.conf1f_flaps,
-                        ) =>
-                {
-                    self.flap_auto_command_angle = self.conf1f_flaps
-                }
-                // If at least one CAS > 100 and < 210 and flaps retracted, flaps 0
-                (Some(cas1), _)
-                    if cas1 > self.kts_100
-                        && cas1 < self.kts_210
-                        && SlatFlapControlComputerMisc::in_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                            self.conf1_flaps,
-                        ) =>
-                {
-                    self.flap_auto_command_angle = self.conf1_flaps
-                }
-                (_, Some(cas2))
-                    if cas2 > self.kts_100
-                        && cas2 < self.kts_210
-                        && SlatFlapControlComputerMisc::in_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                            self.conf1_flaps,
-                        ) =>
-                {
-                    self.flap_auto_command_angle = self.conf1_flaps
-                }
-                // If one CAS <= 100 and other CAS >= 210 and flaps between 0 and 1+F, keep position
-                (Some(cas1), Some(cas2))
-                    if ((cas1 <= self.kts_100 && cas2 >= self.kts_210)
-                        || (cas1 >= self.kts_210 && cas2 <= self.kts_100))
-                        && SlatFlapControlComputerMisc::between_0_1f_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                        ) =>
-                {
-                    // TODO: implement startup inhibition
-                    self.flap_auto_command_angle = self.flaps_feedback_angle
-                }
-                // If at least one CAS > 100 and < 210 and flaps between 0 and 1+F, keep position
-                (Some(cas1), _)
-                    if cas1 > self.kts_100
-                        && cas1 < self.kts_210
-                        && SlatFlapControlComputerMisc::between_0_1f_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                        ) =>
-                {
-                    // TODO: implement startup inhibition
-                    self.flap_auto_command_angle = self.flaps_feedback_angle
-                }
-                (_, Some(cas2))
-                    if cas2 > self.kts_100
-                        && cas2 < self.kts_210
-                        && SlatFlapControlComputerMisc::between_0_1f_enlarged_target_range(
-                            self.flaps_feedback_angle,
-                        ) =>
-                {
-                    // TODO: implement startup inhibition
-                    self.flap_auto_command_angle = self.flaps_feedback_angle
-                }
-                (None, None) => self.flap_auto_command_angle = self.conf1f_flaps,
-                (_, _) => self.flap_auto_command_angle = self.flaps_feedback_angle,
-            }
-            self.flap_auto_command_active = true;
-        }
-    }
-
-    fn power_loss_reset(&mut self) {
-        self.flap_auto_command_active = false;
-        self.flap_auto_command_engaged = false;
-        self.flap_auto_command_angle = Angle::ZERO;
-    }
-
     fn generate_flap_angle(&mut self, adirs: &impl AdirsMeasurementOutputs) -> Angle {
-        if !self.is_powered_delayed.output() {
-            return Angle::ZERO;
-        }
-
         self.update_flap_auto_command(adirs);
 
         if self.flap_auto_command_active {
@@ -420,18 +268,6 @@ impl FlapsChannel {
         flaps_feedback: &impl PositionPickoffUnit,
         adirs: &impl AdirsMeasurementOutputs,
     ) {
-        self.is_powered_delayed.update(context, self.is_powered);
-        self.recovered_power_pulse
-            .update(context, self.is_powered_delayed.output());
-
-        if self.recovered_power_pulse.output() {
-            self.powerup_reset(adirs);
-        }
-
-        if !self.is_powered_delayed.output() {
-            self.power_loss_reset();
-        }
-
         self.csu_monitor.update(context);
         self.flaps_demanded_angle = self.generate_flap_angle(adirs);
 
@@ -439,8 +275,6 @@ impl FlapsChannel {
         self.fap_update();
     }
 
-    // The result of `get_demanded_angle` shall not be used outside of the SFCC.
-    // It returns 0.0 when the SFCC is powered off regardless of the last status.
     pub(super) fn get_demanded_angle(&self) -> Angle {
         self.flaps_demanded_angle
     }
@@ -473,10 +307,6 @@ impl FlapsChannel {
     }
 
     fn flap_actual_position_word(&self) -> Arinc429Word<f64> {
-        if !self.is_powered_delayed.output() {
-            return Arinc429Word::default();
-        }
-
         Arinc429Word::new(
             self.flaps_feedback_angle.get::<degree>(),
             SignStatus::NormalOperation,
@@ -488,10 +318,6 @@ impl FlapsChannel {
 // are held in position and can't move.
 impl ValveBlock for FlapsChannel {
     fn get_pob_status(&self) -> SolenoidStatus {
-        if !self.is_powered_delayed.output() {
-            return SolenoidStatus::DeEnergised;
-        }
-
         let demanded_angle = self.get_demanded_angle();
         let feedback_angle = self.get_feedback_angle();
         let in_target_position =
@@ -503,10 +329,6 @@ impl ValveBlock for FlapsChannel {
     }
 
     fn get_command_status(&self) -> Option<ChannelCommand> {
-        if !self.is_powered_delayed.output() {
-            return None;
-        }
-
         let demanded_angle = self.get_demanded_angle();
         let feedback_angle = self.get_feedback_angle();
         let in_target_position = SlatFlapControlComputerMisc::in_positioning_threshold_range(
@@ -526,10 +348,6 @@ impl SimulationElement for FlapsChannel {
     fn accept<T: SimulationElementVisitor>(&mut self, visitor: &mut T) {
         self.csu_monitor.accept(visitor);
         visitor.visit(self);
-    }
-
-    fn receive_power(&mut self, buses: &impl ElectricalBuses) {
-        self.is_powered = buses.is_powered(self.powered_by);
     }
 
     fn write(&self, writer: &mut SimulatorWriter) {

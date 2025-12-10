@@ -268,7 +268,7 @@ export class OansControlPanel extends DisplayComponent<OansProps> {
       this.activeDatabase.set(`${from.getDate()}${months[from.getMonth()]}-${to.getDate()}${months[to.getMonth()]}`);
     });
 
-    NXDataStore.getAndSubscribeLegacy('NAVIGRAPH_ACCESS_TOKEN', () => this.loadOansDb());
+    NXDataStore.getAndSubscribe('NAVIGRAPH_ACCESS_TOKEN', () => this.loadOansDb());
 
     this.subs.push(
       this.props.isVisible.sub((it) => this.style.setValue('visibility', it ? 'inherit' : 'hidden'), true),
@@ -311,7 +311,7 @@ export class OansControlPanel extends DisplayComponent<OansProps> {
       }, true),
     );
 
-    this.oansPerformanceModeSettingSub = NXDataStore.getAndSubscribeLegacy(
+    this.oansPerformanceModeSettingSub = NXDataStore.getAndSubscribe(
       'CONFIG_A380X_OANS_PERFORMANCE_MODE',
       (_, v) => this.oansPerformanceMode.set(v === '1'),
       '0',

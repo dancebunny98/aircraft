@@ -29,7 +29,7 @@ function useProvideAuth() {
 
       if (u) {
         // Compat for some old legacy JS
-        NXDataStore.setLegacy('NAVIGRAPH_USERNAME', u.preferred_username);
+        NXDataStore.set('NAVIGRAPH_USERNAME', u.preferred_username);
       }
 
       setUser(u);

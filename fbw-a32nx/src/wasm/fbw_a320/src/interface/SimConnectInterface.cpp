@@ -920,8 +920,10 @@ bool SimConnectInterface::prepareClientDataDefinitions() {
   result &= SimConnect_CreateClientData(hSimConnect, ClientData::FMGC_DISCRETE_OUTPUTS, sizeof(base_fmgc_discrete_outputs),
                                         SIMCONNECT_CREATE_CLIENT_DATA_FLAG_DEFAULT);
   // add data definitions
-  result &= SimConnect_AddToClientDataDefinition(hSimConnect, ClientData::FMGC_DISCRETE_OUTPUTS, SIMCONNECT_CLIENTDATAOFFSET_AUTO,
-                                                 sizeof(base_fmgc_discrete_inputs));
+  for (int i = 0; i < 6; i++) {
+    result &= SimConnect_AddToClientDataDefinition(hSimConnect, ClientData::FMGC_DISCRETE_OUTPUTS, SIMCONNECT_CLIENTDATAOFFSET_AUTO,
+                                                   SIMCONNECT_CLIENTDATATYPE_INT8);
+  }
 
   // request data to be updated when set
   result &= SimConnect_RequestClientData(hSimConnect, ClientData::FMGC_DISCRETE_OUTPUTS, ClientData::FMGC_DISCRETE_OUTPUTS,

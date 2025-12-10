@@ -1,46 +1,31 @@
-// Copyright (c) 2021-2025 FlyByWire Simulations
+// Copyright (c) 2021-2023 FlyByWire Simulations
 //
 // SPDX-License-Identifier: GPL-3.0
 
-import { DataStoreSettingKey, LegacyDataStoreSettingKey, NXDataStore } from '@flybywiresim/fbw-sdk';
-
 import { useEffect, useState } from 'react';
-
-import { useMutableSubscribable } from './subscribables';
-
-/**
- * Exposes a DataStore setting as a settable reactive state
- * @param key the key of the setting
- */
-export const usePersistentSetting = <k extends DataStoreSettingKey>(key: k) =>
-  useMutableSubscribable(NXDataStore.getSetting(key));
+import { NXDataStore } from '@flybywiresim/fbw-sdk';
 
 /**
  * This hook allows to read and set a persistent storage property.
  * Overloads are provided to absolve callers with defaults from dealing with possibly undefined
- *
- * @deprecated
  */
-export function usePersistentProperty<k extends string>(
-  propertyName: LegacyDataStoreSettingKey<k>,
-  defaultValue: string,
-): [string, (value: string) => void];
-export function usePersistentProperty<k extends string>(
-  propertyName: LegacyDataStoreSettingKey<k>,
+export function usePersistentProperty(propertyName: string, defaultValue: string): [string, (value: string) => void];
+export function usePersistentProperty(
+  propertyName: string,
   defaultValue?: string,
 ): [string | undefined, (value: string) => void];
 export function usePersistentProperty(propertyName: string, defaultValue?: string): any {
-  const [propertyValue, rawPropertySetter] = useState(() => NXDataStore.getLegacy(propertyName, defaultValue));
+  const [propertyValue, rawPropertySetter] = useState(() => NXDataStore.get(propertyName, defaultValue));
 
   useEffect(() => {
-    const unsubscribe = NXDataStore.subscribeLegacy(propertyName, (key, value) => rawPropertySetter(value));
+    const unsubscribe = NXDataStore.subscribe(propertyName, (key, value) => rawPropertySetter(value));
     return () => {
       unsubscribe();
     };
   }, []);
 
   const propertySetter = (value: string) => {
-    NXDataStore.setLegacy(propertyName, value);
+    NXDataStore.set(propertyName, value);
     rawPropertySetter(value);
   };
 
@@ -50,15 +35,13 @@ export function usePersistentProperty(propertyName: string, defaultValue?: strin
 /**
  * This hook allows to read and set a persistent storage property as a number.
  * Overloads are provided to absolve callers with defaults from dealing with possibly undefined
- *
- * @deprecated
  */
-export function usePersistentNumberProperty<k extends string>(
-  propertyName: LegacyDataStoreSettingKey<k>,
+export function usePersistentNumberProperty(
+  propertyName: string,
   defaultValue: number,
 ): [number, (value: number) => void];
-export function usePersistentNumberProperty<k extends string>(
-  propertyName: LegacyDataStoreSettingKey<k>,
+export function usePersistentNumberProperty(
+  propertyName: string,
   defaultValue?: number,
 ): [number | undefined, (value: number) => void];
 export function usePersistentNumberProperty(propertyName: string, defaultValue?: number): any {
@@ -76,15 +59,13 @@ export function usePersistentNumberProperty(propertyName: string, defaultValue?:
 /**
  * This hook allows to read and set a persistent storage property as a boolean.
  * Overloads are provided to absolve callers with defaults from dealing with possibly undefined
- *
- * @deprecated
  */
-export function usePersistentBooleanProperty<k extends string>(
-  propertyName: LegacyDataStoreSettingKey<k>,
+export function usePersistentBooleanProperty(
+  propertyName: string,
   defaultValue: boolean,
 ): [boolean, (value: boolean) => void];
-export function usePersistentBooleanProperty<k extends string>(
-  propertyName: LegacyDataStoreSettingKey<k>,
+export function usePersistentBooleanProperty(
+  propertyName: string,
   defaultValue?: boolean,
 ): [boolean | undefined, (value: boolean) => void];
 export function usePersistentBooleanProperty(propertyName: string, defaultValue?: boolean): any {

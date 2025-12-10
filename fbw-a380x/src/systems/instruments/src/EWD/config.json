@@ -5,8 +5,5 @@
     "width": 768,
     "height": 1024
   },
-  "isInteractive": true,
-  "extraDeps": [
-    "../MsfsAvionicsCommon"
-  ]
+  "isInteractive": true
 }

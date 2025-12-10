@@ -20,9 +20,9 @@ export class Units {
 
   static get usingMetric(): boolean {
     if (Units.mMetricUnits === undefined) {
-      NXDataStore.getAndSubscribeLegacy(
+      NXDataStore.getAndSubscribe(
         'CONFIG_USING_METRIC_UNIT',
-        (_: string, value: string | undefined) => {
+        (_: string, value: string) => {
           Units.mMetricUnits = value === '1';
         },
         '1',
