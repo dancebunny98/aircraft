@@ -1,3 +1,37 @@
+//  Copyright (c) 2024 FlyByWire Simulations
+//  SPDX-License-Identifier: GPL-3.0
+
+/* eslint-disable default-case */
+/* eslint-disable max-len */
+
+import {
+  LerpLookupTable,
+  LerpVectorLookupTable,
+  MathUtils,
+  ReadonlyFloat64Array,
+  Vec2Math,
+  Vec3Math,
+  VecNMath,
+} from '@microsoft/msfs-sdk';
+
+import {
+  LineupAngle,
+  TakeoffPerformanceCalculator,
+  TakeoffPerfomanceError,
+  TakeoffPerformanceInputs,
+  TakeoffPerformanceParameters,
+  TakeoffPerformanceResult,
+  TakeoffAntiIceSetting,
+  RunwayCondition,
+  LimitingFactor,
+  LimitWeight,
+  TakeoffPerformanceSpeeds,
+} from '@flybywiresim/fbw-sdk';
+
+/**
+ * Takeoff performance calculator for an A320-251N with forward CG
+ */
+
 
 /**
  * Enhanced A380X takeoff module with:
