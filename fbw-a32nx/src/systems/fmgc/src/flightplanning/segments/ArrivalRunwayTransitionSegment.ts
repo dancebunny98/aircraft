@@ -5,11 +5,10 @@
 
 import { LegType, ProcedureTransition, WaypointConstraintType } from '@flybywiresim/fbw-sdk';
 import { FlightPlanElement, FlightPlanLeg } from '@fmgc/flightplanning/legs/FlightPlanLeg';
-import { BaseFlightPlan } from '@fmgc/flightplanning/plans/BaseFlightPlan';
+import { BaseFlightPlan, FlightPlanQueuedOperation } from '@fmgc/flightplanning/plans/BaseFlightPlan';
 import { SegmentClass } from '@fmgc/flightplanning/segments/SegmentClass';
 import { ProcedureSegment } from '@fmgc/flightplanning/segments/ProcedureSegment';
 import { RestringOptions } from '../plans/RestringOptions';
-import { FlightPlanQueuedOperation } from '@fmgc/flightplanning/plans/FlightPlanQueuedOperation';
 
 export class ArrivalRunwayTransitionSegment extends ProcedureSegment<ProcedureTransition> {
   class = SegmentClass.Arrival;
@@ -67,13 +66,11 @@ export class ArrivalRunwayTransitionSegment extends ProcedureSegment<ProcedureTr
     }
   }
 
-  clone(forPlan: BaseFlightPlan, options?: number): ArrivalRunwayTransitionSegment {
+  clone(forPlan: BaseFlightPlan): ArrivalRunwayTransitionSegment {
     const newSegment = new ArrivalRunwayTransitionSegment(forPlan);
 
     newSegment.strung = this.strung;
-    newSegment.allLegs = [
-      ...this.allLegs.map((it) => (it.isDiscontinuity === false ? it.clone(newSegment, options) : it)),
-    ];
+    newSegment.allLegs = [...this.allLegs.map((it) => (it.isDiscontinuity === false ? it.clone(newSegment) : it))];
     newSegment.arrivalRunwayTransition = this.arrivalRunwayTransition;
 
     return newSegment;

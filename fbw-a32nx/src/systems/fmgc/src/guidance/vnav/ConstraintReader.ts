@@ -35,7 +35,7 @@ export class ConstraintReader {
       return SimVar.GetSimVarValue('L:A32NX_FM_VNAV_DEBUG_DISTANCE_TO_END', 'nautical miles');
     }
 
-    return this.guidanceController.getAlongTrackDistanceToDestination();
+    return this.guidanceController.alongTrackDistanceToDestination;
   }
 
   // If you change this property here, make sure you also reset it properly in `reset`
@@ -86,6 +86,10 @@ export class ConstraintReader {
             waypointIndex,
             isIgnored: false,
           });
+        } else {
+          // We've already passed the waypoint
+          plan.removeCruiseStep(i);
+          SimVar.SetSimVarValue('L:A32NX_FM_VNAV_TRIGGER_STEP_DELETED', 'boolean', true);
         }
       }
 

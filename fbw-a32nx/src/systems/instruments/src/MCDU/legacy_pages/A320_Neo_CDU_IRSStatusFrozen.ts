@@ -1,10 +1,12 @@
 // @ts-strict-ignore
 import { CDUIRSMonitor } from './A320_Neo_CDU_IRSMonitor';
-import { CDUIRSStatusFrozen } from './A320_Neo_CDU_IRSStatusFrozen';
+import { CDUIRSStatus } from './A320_Neo_CDU_IRSStatus';
 import { LegacyFmsPageInterface } from '../legacy/LegacyFmsPageInterface';
 
-export class CDUIRSStatus {
-  static ShowPage(mcdu: LegacyFmsPageInterface, index, prev_wind_dir?) {
+export class CDUIRSStatusFrozen {
+  static ShowPage(mcdu: LegacyFmsPageInterface, index, wind_dir) {
+    mcdu.clearDisplay();
+    mcdu.page.Current = mcdu.page.IRSStatusFrozen;
     let currPos = new LatLong(
       SimVar.GetSimVarValue('GPS POSITION LAT', 'degree latitude'),
       SimVar.GetSimVarValue('GPS POSITION LON', 'degree longitude'),
@@ -21,32 +23,18 @@ export class CDUIRSStatus {
     const latStr = currPosSplit[0];
     const lonStr = currPosSplit[1];
     currPos = latStr + sep + lonStr;
-    const GROUNDSPEED = SimVar.GetSimVarValue('GPS GROUND SPEED', 'Knots') || '0';
+    const GROUNDSPEED = SimVar.GetSimVarValue('GPS GROUND SPEED', 'Meters per second') || '0';
     const THDG = SimVar.GetSimVarValue('GPS GROUND TRUE HEADING', 'radians') || '000';
     const TTRK = SimVar.GetSimVarValue('GPS GROUND MAGNETIC TRACK', 'radians') || '000';
     const MHDG = SimVar.GetSimVarValue('GPS GROUND TRUE TRACK', 'radians') || '000';
     const WIND_VELOCITY = SimVar.GetSimVarValue('AMBIENT WIND VELOCITY', 'Knots') || '00';
-    // wind direction smoothing like A32NX_NDInfo.js:setWind()
-    let wind_dir = Math.round(Simplane.getWindDirection());
-    if (typeof prev_wind_dir == 'undefined') {
-      prev_wind_dir = wind_dir;
-    }
-    let startAngle = prev_wind_dir;
-    let endAngle = wind_dir;
-    const delta = endAngle - startAngle;
-    if (delta > 180) {
-      startAngle += 360;
-    } else if (delta < -180) {
-      endAngle += 360;
-    }
-    // FIXME filtering inside the page doesn't make a lot of sense!
-    const smoothedAngle = Utils.SmoothSin(startAngle, endAngle, 0.25, mcdu._deltaTime / 1000);
-    wind_dir = smoothedAngle % 360;
+    const UTC_SECONDS = Math.floor(SimVar.GetGlobalVarValue('ZULU TIME', 'seconds'));
+    const hours = Math.floor(UTC_SECONDS / 3600) || 0;
+    const minutes = Math.floor((UTC_SECONDS % 3600) / 60) || 0;
+    const hhmm = `${hours.toString().padStart(2, '0') || '00'}${minutes.toString().padStart(2, '0') || '00'}`;
 
-    mcdu.clearDisplay();
-    mcdu.page.Current = mcdu.page.IRSStatus;
     mcdu.setTemplate([
-      [`IRS${index}`],
+      [`IRS${index} FROZEN AT ${hhmm}`],
       ['POSITION'],
       [`${currPos}[color]green`],
       ['TTRK', 'GS'],
@@ -58,30 +46,19 @@ export class CDUIRSStatus {
       ['GPIRS POSITION'],
       [`${currPos}[color]green`],
       ['', ''],
-      ['{FREEZE[color]cyan', `${index < 3 ? 'NEXT IRS>' : 'RETURN>'}`],
+      ['{UNFREEZE[color]cyan', `${index < 3 ? 'NEXT IRS>' : 'RETURN>'}`],
     ]);
 
     mcdu.onLeftInput[5] = () => {
-      CDUIRSStatusFrozen.ShowPage(mcdu, index, wind_dir);
-    };
-
-    mcdu.rightInputDelay[5] = () => {
-      return mcdu.getDelaySwitchPage();
+      CDUIRSStatus.ShowPage(mcdu, index);
     };
 
     mcdu.onRightInput[5] = () => {
       if (index > 2) {
         CDUIRSMonitor.ShowPage(mcdu);
       } else {
-        this.ShowPage(mcdu, index + 1);
+        CDUIRSStatus.ShowPage(mcdu, index + 1);
       }
     };
-
-    // regular update due to showing dynamic data on this page
-    mcdu.SelfPtr = setTimeout(() => {
-      if (mcdu.page.Current === mcdu.page.IRSStatus) {
-        CDUIRSStatus.ShowPage(mcdu, index, wind_dir);
-      }
-    }, mcdu.PageTimeout.Default);
   }
 }

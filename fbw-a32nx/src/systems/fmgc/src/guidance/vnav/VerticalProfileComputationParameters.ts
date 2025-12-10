@@ -11,7 +11,6 @@ import { VnavConfig } from '@fmgc/guidance/vnav/VnavConfig';
 import { UnitType } from '@microsoft/msfs-sdk';
 import { ArmedLateralMode, ArmedVerticalMode, LateralMode, VerticalMode } from '@shared/autopilot';
 import { FmgcFlightPhase } from '@shared/flightphase';
-import { FlightPlanIndex } from '../../flightplanning/FlightPlanManager';
 
 export interface VerticalProfileComputationParameters {
   presentPosition: LatLongAlt;
@@ -113,8 +112,8 @@ export class VerticalProfileComputationParametersObserver {
         this.fmgc.getThrustReductionAltitude() ?? DefaultVerticalProfileParameters.thrustReductionAltitude,
       originTransitionAltitude: this.fmgc.getOriginTransitionAltitude(),
       // We do it this way because the cruise altitude is cleared in the MCDU once you start the descent
-      cruiseAltitude: this.flightPlanService.active.performanceData.cruiseFlightLevel.get()
-        ? this.flightPlanService.active.performanceData.cruiseFlightLevel.get() * 100
+      cruiseAltitude: this.flightPlanService.active.performanceData.cruiseFlightLevel
+        ? this.flightPlanService.active.performanceData.cruiseFlightLevel * 100
         : this.parameters?.cruiseAltitude,
       climbSpeedLimit: this.fmgc.getClimbSpeedLimit(),
       descentSpeedLimit: this.fmgc.getDescentSpeedLimit(),
@@ -209,7 +208,7 @@ export class VerticalProfileComputationParametersObserver {
   }
 
   getFuelOnBoard(): Pounds {
-    const fmFuelOnBoard = this.fmgc.getFOB(FlightPlanIndex.Active);
+    const fmFuelOnBoard = this.fmgc.getFOB();
 
     return Number.isFinite(fmFuelOnBoard) ? UnitType.TONNE.convertTo(fmFuelOnBoard, UnitType.POUND) : undefined;
   }

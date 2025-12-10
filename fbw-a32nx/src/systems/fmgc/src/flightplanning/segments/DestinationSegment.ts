@@ -6,13 +6,12 @@
 
 import { Airport, Runway } from '@flybywiresim/fbw-sdk';
 import { FlightPlanElement, FlightPlanLeg } from '@fmgc/flightplanning/legs/FlightPlanLeg';
-import { BaseFlightPlan } from '@fmgc/flightplanning/plans/BaseFlightPlan';
+import { BaseFlightPlan, FlightPlanQueuedOperation } from '@fmgc/flightplanning/plans/BaseFlightPlan';
 import { SegmentClass } from '@fmgc/flightplanning/segments/SegmentClass';
 import { loadAllApproaches, loadAllArrivals, loadAllRunways } from '@fmgc/flightplanning/DataLoading';
 import { RestringOptions } from '@fmgc/flightplanning/plans/RestringOptions';
 import { FlightPlanSegment, SerializedFlightPlanSegment } from './FlightPlanSegment';
 import { NavigationDatabaseService } from '../NavigationDatabaseService';
-import { FlightPlanQueuedOperation } from '@fmgc/flightplanning/plans/FlightPlanQueuedOperation';
 
 export class DestinationSegment extends FlightPlanSegment {
   class = SegmentClass.Arrival;
@@ -111,13 +110,11 @@ export class DestinationSegment extends FlightPlanSegment {
     this.flightPlan.syncSegmentLegsChange(this);
   }
 
-  clone(forPlan: BaseFlightPlan, options?: number): DestinationSegment {
+  clone(forPlan: BaseFlightPlan): DestinationSegment {
     const newSegment = new DestinationSegment(forPlan);
 
     newSegment.strung = this.strung;
-    newSegment.allLegs = [
-      ...this.allLegs.map((it) => (it.isDiscontinuity === false ? it.clone(newSegment, options) : it)),
-    ];
+    newSegment.allLegs = [...this.allLegs.map((it) => (it.isDiscontinuity === false ? it.clone(newSegment) : it))];
     newSegment.airport = this.airport;
     newSegment.runway = this.runway;
 

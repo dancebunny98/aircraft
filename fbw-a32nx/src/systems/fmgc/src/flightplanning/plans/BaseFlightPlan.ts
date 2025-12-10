@@ -25,13 +25,7 @@ import {
   WaypointDescriptor,
 } from '@flybywiresim/fbw-sdk';
 import { OriginSegment } from '@fmgc/flightplanning/segments/OriginSegment';
-import {
-  FlightPlanElement,
-  FlightPlanLeg,
-  FlightPlanLegFlags,
-  isDiscontinuity,
-  isLeg,
-} from '@fmgc/flightplanning/legs/FlightPlanLeg';
+import { FlightPlanElement, FlightPlanLeg, FlightPlanLegFlags, isLeg } from '@fmgc/flightplanning/legs/FlightPlanLeg';
 import { DepartureSegment } from '@fmgc/flightplanning/segments/DepartureSegment';
 import { ArrivalSegment } from '@fmgc/flightplanning/segments/ArrivalSegment';
 import { ApproachSegment } from '@fmgc/flightplanning/segments/ApproachSegment';
@@ -66,7 +60,12 @@ import { ReadonlyFlightPlan } from '@fmgc/flightplanning/plans/ReadonlyFlightPla
 import { LnavConfig } from '@fmgc/guidance/LnavConfig';
 import { bearingTo } from 'msfs-geo';
 import { RestringOptions } from './RestringOptions';
-import { FlightPlanQueuedOperation } from '@fmgc/flightplanning/plans/FlightPlanQueuedOperation';
+
+export enum FlightPlanQueuedOperation {
+  Restring,
+  RebuildArrivalAndApproach,
+  SyncSegmentLegs,
+}
 
 export abstract class BaseFlightPlan<P extends FlightPlanPerformanceData = FlightPlanPerformanceData>
   implements ReadonlyFlightPlan
@@ -307,10 +306,6 @@ export abstract class BaseFlightPlan<P extends FlightPlanPerformanceData = Fligh
       this.activeLeg.definition.approachWaypointDescriptor === ApproachWaypointDescriptor.MissedApproachPoint
     ) {
       this.stringMissedApproach();
-    }
-
-    if (isLeg(this.activeLeg) && this.activeLeg.cruiseStep) {
-      this.autoDeleteCruiseStep(this.activeLegIndex);
     }
 
     this.activeLegIndex++;
@@ -1260,11 +1255,9 @@ export abstract class BaseFlightPlan<P extends FlightPlanPerformanceData = Fligh
    * @param airportIdent the airport to use as the new destination
    */
   async newDest(index: number, airportIdent: string) {
+    this.redistributeLegsAt(index);
+
     const leg = this.legElementAt(index);
-
-    const segment = leg.segment;
-    this.redistributeLegsAt(segment.class === SegmentClass.Departure ? index + 1 : index);
-
     const legIndexInEnroute = this.enrouteSegment.allLegs.indexOf(leg);
 
     const legsToDelete = this.enrouteSegment.allLegs.length - (legIndexInEnroute + 1);
@@ -1273,13 +1266,14 @@ export abstract class BaseFlightPlan<P extends FlightPlanPerformanceData = Fligh
     await this.approachViaSegment.setProcedure(undefined);
     await this.arrivalEnrouteTransitionSegment.setProcedure(undefined);
     await this.arrivalSegment.setProcedure(undefined);
+    await this.destinationSegment.setDestinationIcao(airportIdent);
+    await this.destinationSegment.setDestinationRunway(undefined);
 
-    await this.setDestinationAirport(airportIdent);
-    await this.setDestinationRunway(undefined);
+    await this.flushOperationQueue();
 
     this.enrouteSegment.allLegs.splice(legIndexInEnroute + 1, legsToDelete);
 
-    if (!isDiscontinuity(this.enrouteSegment.allLegs[this.enrouteSegment.allLegs.length - 1])) {
+    if (this.enrouteSegment.allLegs[this.enrouteSegment.legCount - 1].isDiscontinuity === false) {
       this.enrouteSegment.allLegs.push({ isDiscontinuity: true });
     }
     this.enrouteSegment.strung = true;
@@ -1660,15 +1654,6 @@ export abstract class BaseFlightPlan<P extends FlightPlanPerformanceData = Fligh
     this.unignoreAllCruiseSteps();
 
     this.incrementVersion();
-  }
-
-  private autoDeleteCruiseStep(legIndex: number) {
-    this.sendEvent('flightPlan.autoDeleteCruiseStep', {
-      planIndex: this.index,
-      forAlternate: this instanceof AlternateFlightPlan,
-    });
-
-    this.removeCruiseStep(legIndex);
   }
 
   removeCruiseStep(index: number) {

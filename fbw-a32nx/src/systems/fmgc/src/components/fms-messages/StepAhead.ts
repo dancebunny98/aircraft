@@ -25,7 +25,7 @@ export class StepAhead implements FMMessageSelector {
   }
 
   process(_: number): FMMessageUpdate {
-    const distanceToEnd = this.guidanceController.getAlongTrackDistanceToDestination();
+    const distanceToEnd = this.guidanceController.alongTrackDistanceToDestination;
 
     if (!this.guidanceController.vnavDriver.mcduProfile?.isReadyToDisplay || distanceToEnd <= 0) {
       return FMMessageUpdate.NO_ACTION;

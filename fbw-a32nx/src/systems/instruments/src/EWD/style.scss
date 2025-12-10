@@ -133,21 +133,11 @@ animation: pulsingS 1s step-end infinite;
         }
     }
 
-    .AmberStroke {
-        stroke: $display-amber !important;
-    }
-
     .Separator {
       stroke: $display-grey;
       stroke-width: 4;
       fill: none;
       stroke-linecap: round;
-    }
-
-    .Line {
-        stroke: $display-green;
-        stroke-width: 2;
-        fill: none;
     }
 
     .AmberLine {
@@ -259,8 +249,8 @@ animation: pulsingS 1s step-end infinite;
         stroke-linejoin: bevel;
     }
 
-    .Path {
-        stroke: $display-green;
+    .Slats, .Flaps {
+        stroke: $display-green !important;
         stroke-width: 2px;
         fill: none;
         stroke-linejoin: bevel !important;

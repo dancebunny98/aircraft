@@ -2,18 +2,15 @@
 import { CDUInitPage } from './A320_Neo_CDU_InitPage';
 import { LegacyFmsPageInterface } from '../legacy/LegacyFmsPageInterface';
 import { CoRouteUplinkAdapter } from '@fmgc/flightplanning/uplink/CoRouteUplinkAdapter';
-import { FlightPlanIndex } from '@fmgc/flightplanning/FlightPlanManager';
 
 export class CDUAvailableFlightPlanPage {
-  static ShowPage(mcdu: LegacyFmsPageInterface, forPlan: FlightPlanIndex, offset = 0, currentRoute = 1) {
+  static ShowPage(mcdu: LegacyFmsPageInterface, offset = 0, currentRoute = 1) {
     mcdu.clearDisplay();
     mcdu.page.Current = mcdu.page.AvailableFlightPlanPage;
     let fromTo = 'NO ORIGIN/DEST';
 
-    const plan = mcdu.flightPlanService.get(forPlan);
-
-    const origin = plan.originAirport;
-    const dest = plan.destinationAirport;
+    const origin = mcdu.flightPlanService.active.originAirport;
+    const dest = mcdu.flightPlanService.active.destinationAirport;
 
     if (origin && dest) {
       fromTo = `${origin.ident}/${dest.ident}`;
@@ -158,22 +155,22 @@ export class CDUAvailableFlightPlanPage {
       ]);
 
       mcdu.onPrevPage = () => {
-        CDUAvailableFlightPlanPage.ShowPage(mcdu, forPlan, 0, currentRoute - 1);
+        CDUAvailableFlightPlanPage.ShowPage(mcdu, 0, currentRoute - 1);
       };
       mcdu.onNextPage = () => {
-        CDUAvailableFlightPlanPage.ShowPage(mcdu, forPlan, 0, currentRoute + 1);
+        CDUAvailableFlightPlanPage.ShowPage(mcdu, 0, currentRoute + 1);
       };
       mcdu.onDown = () => {
         //on page down decrement the page offset.
-        CDUAvailableFlightPlanPage.ShowPage(mcdu, forPlan, offset - 1, currentRoute);
+        CDUAvailableFlightPlanPage.ShowPage(mcdu, offset - 1, currentRoute);
       };
       mcdu.onUp = () => {
-        CDUAvailableFlightPlanPage.ShowPage(mcdu, forPlan, offset + 1, currentRoute);
+        CDUAvailableFlightPlanPage.ShowPage(mcdu, offset + 1, currentRoute);
       };
 
       mcdu.onLeftInput[5] = () => {
         mcdu.coRoute.routes = [];
-        CDUInitPage.ShowPage1(mcdu, forPlan);
+        CDUInitPage.ShowPage1(mcdu);
       };
 
       mcdu.onRightInput[5] = () => {
@@ -188,18 +185,13 @@ export class CDUAvailableFlightPlanPage {
         }
         mcdu.coRoute['navlog'] = selectedRoute.navlog;
         setTimeout(async () => {
-          // TODO sec?
           // FIXME This should not use the uplink functions, as it is not an uplink.
           // Doing so causes an erroneous uplink related scratchpad message.
-          await CoRouteUplinkAdapter.uplinkFlightPlanFromCoRoute(
-            mcdu,
-            FlightPlanIndex.Active,
-            mcdu.flightPlanService,
-            selectedRoute,
-          );
+          await CoRouteUplinkAdapter.uplinkFlightPlanFromCoRoute(mcdu, mcdu.flightPlanService, selectedRoute);
           await mcdu.flightPlanService.uplinkInsert();
+          mcdu.setGroundTempFromOrigin();
 
-          CDUInitPage.ShowPage1(mcdu, forPlan);
+          CDUInitPage.ShowPage1(mcdu);
         }, 0 /* No delay because it takes long enough without artificial delay */);
       };
     } else {
@@ -220,7 +212,7 @@ export class CDUAvailableFlightPlanPage {
       ]);
     }
     mcdu.onLeftInput[5] = () => {
-      CDUInitPage.ShowPage1(mcdu, forPlan);
+      CDUInitPage.ShowPage1(mcdu);
     };
   }
 

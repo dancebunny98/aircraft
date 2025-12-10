@@ -1,5 +1,6 @@
 /** Types of flight plan segments. */
 export enum SegmentType {
+
   /** The origin airfield segment. */
   Origin,
 

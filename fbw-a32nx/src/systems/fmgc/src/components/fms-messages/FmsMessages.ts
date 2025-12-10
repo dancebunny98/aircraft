@@ -66,7 +66,7 @@ export class FmsMessages implements FmgcComponent {
     new RwyLsMismatchRight(),
     new TdReached(),
     new StepAhead(),
-    new StepDeleted(this.bus),
+    new StepDeleted(),
     new TooSteepPathAhead(),
   ];
 

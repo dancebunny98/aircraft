@@ -145,28 +145,12 @@ export class FlightPlanRpcClient<P extends FlightPlanPerformanceData> implements
     return this.has(FlightPlanIndex.Uplink);
   }
 
-  secondaryInit(index: number): Promise<void> {
-    return this.callFunctionViaRpc('secondaryInit', index);
-  }
-
-  secondaryCopyFromActive(index: number, isBeforeEngineStart: boolean): Promise<void> {
-    return this.callFunctionViaRpc('secondaryCopyFromActive', index, isBeforeEngineStart);
-  }
-
   secondaryDelete(index: number): Promise<void> {
     return this.callFunctionViaRpc('secondaryDelete', index);
   }
 
   secondaryReset(index: number): Promise<void> {
     return this.callFunctionViaRpc('secondaryReset', index);
-  }
-
-  secondaryActivate(index: number, isBeforeEngineStart: boolean): Promise<void> {
-    return this.callFunctionViaRpc('secondaryActivate', index, isBeforeEngineStart);
-  }
-
-  activeAndSecondarySwap(secIndex: number, isBeforeEngineStart: boolean): Promise<void> {
-    return this.callFunctionViaRpc('activeAndSecondarySwap', secIndex, isBeforeEngineStart);
   }
 
   temporaryInsert(): Promise<void> {
@@ -177,8 +161,8 @@ export class FlightPlanRpcClient<P extends FlightPlanPerformanceData> implements
     return this.callFunctionViaRpc('temporaryDelete');
   }
 
-  uplinkInsert(intoPlan: number): Promise<void> {
-    return this.callFunctionViaRpc('uplinkInsert', intoPlan);
+  uplinkInsert(): Promise<void> {
+    return this.callFunctionViaRpc('uplinkInsert');
   }
 
   uplinkDelete(): Promise<void> {
@@ -399,8 +383,7 @@ export class FlightPlanRpcClient<P extends FlightPlanPerformanceData> implements
     return this.callFunctionViaRpc('setFlightNumber', flightNumber, planIndex);
   }
 
-  // FIXME types
-  setPerformanceData<k extends keyof P & string>(key: k, value: any, planIndex: number): Promise<void> {
+  setPerformanceData<k extends keyof P & string>(key: k, value: P[k], planIndex: number): Promise<void> {
     return this.callFunctionViaRpc('setPerformanceData', key, value, planIndex);
   }
 
