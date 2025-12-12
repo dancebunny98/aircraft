@@ -4183,3 +4183,240 @@ export class A380842TakeoffPerformanceCalculator implements TakeoffPerformanceCa
 
     result.intermediateSpeeds = speeds as TakeoffPerformanceSpeeds;
   }
+
+ /**
+   * Calculate V2 for second segment/brake energy limited takeoff
+   * @param speeds Partial speeds object to populate
+   * @param result Result object with inputs and parameters
+   * @param correctWind Whether to apply wind corrections
+   * @param useTable2 Whether to use Table 2 (higher speeds)
+   * @returns V2 speed in knots
+   */
+  private calculateSecondSegBrakeV2(
+    speeds: Partial<TakeoffPerformanceSpeeds>,
+    result: Partial<TakeoffPerformanceResult>,
+    correctWind: boolean,
+    useTable2: boolean,
+  ): number {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    // Base V2
+    const [v2BaseFactor1, v2BaseFactor2] = useTable2
+      ? A380842TakeoffPerformanceCalculator.v2SecondSegBrakeBaseTable2[result.inputs.conf]
+      : A380842TakeoffPerformanceCalculator.v2SecondSegBrakeBaseTable1[result.inputs.conf];
+    speeds.v2Base = (result.inputs.tow / 1000) * v2BaseFactor1 + v2BaseFactor2;
+
+    // Runway length correction
+    const [v2BaseRunwayLength, v2RunwayFactor] = useTable2
+      ? A380842TakeoffPerformanceCalculator.v2SecondSegBrakeRunwayTable2[result.inputs.conf]
+      : A380842TakeoffPerformanceCalculator.v2SecondSegBrakeRunwayTable1[result.inputs.conf];
+    speeds.v2DeltaRunway = (v2BaseRunwayLength - result.params.adjustedTora) * v2RunwayFactor;
+
+    // Altitude correction
+    const [v2AltFactor1, v2AltFactor2, v2AltFactor3, v2AltFactor4] =
+      A380842TakeoffPerformanceCalculator.v2SecondSegBrakeAltFactors[result.inputs.conf];
+    speeds.v2DeltaAlt =
+      result.params.pressureAlt *
+      ((result.inputs.tow / 1000) * v2AltFactor1 + v2AltFactor2) *
+      (result.params.adjustedTora * v2AltFactor3 + v2AltFactor4);
+
+    // Slope correction
+    const [v2SlopeFactor1, v2SlopeFactor2] =
+      A380842TakeoffPerformanceCalculator.v2SecondSegBrakeSlopeFactors[result.inputs.conf];
+    speeds.v2DeltaSlope =
+      result.inputs.slope * result.params.adjustedTora * ((result.inputs.tow / 1000) * v2SlopeFactor1 + v2SlopeFactor2);
+
+    // Wind correction (if requested)
+    if (correctWind) {
+      const v2WindFactor =
+        result.params.headwind >= 0
+          ? A380842TakeoffPerformanceCalculator.v2SecondSegBrakeHeadwindFactors[result.inputs.conf]
+          : A380842TakeoffPerformanceCalculator.v2SecondSegBrakeTailwindFactors[result.inputs.conf];
+      speeds.v2DeltaWind = result.params.headwind * v2WindFactor;
+    } else {
+      speeds.v2DeltaWind = 0;
+    }
+
+    return speeds.v2Base + speeds.v2DeltaRunway + speeds.v2DeltaAlt + speeds.v2DeltaSlope + speeds.v2DeltaWind;
+  }
+
+  /**
+   * Calculate V1 for second segment/brake energy limited takeoff
+   * @param speeds Partial speeds object to populate
+   * @param result Result object with inputs and parameters
+   * @param useTable2 Whether to use Table 2 (higher speeds)
+   * @returns V1 speed in knots
+   */
+  private calculateSecondSegBrakeV1(
+    speeds: Partial<TakeoffPerformanceSpeeds>,
+    result: Partial<TakeoffPerformanceResult>,
+    useTable2: boolean,
+  ): number {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    // Base V1
+    const [v1BaseFactor1, v1BaseFactor2]: [number, number] = useTable2
+      ? A380842TakeoffPerformanceCalculator.v1SecondSegBrakeBaseTable2[result.inputs.conf]
+      : A380842TakeoffPerformanceCalculator.v1SecondSegBrakeBaseTable1[result.inputs.conf];
+    speeds.v1Base = (result.inputs.tow / 1000) * v1BaseFactor1 + v1BaseFactor2;
+
+    // Runway length correction
+    const [v1BaseLength, v1RunwayFactor1, v1RunwayFactor2] = useTable2
+      ? A380842TakeoffPerformanceCalculator.v1SecondSegBrakeRunwayTable2[result.inputs.conf]
+      : A380842TakeoffPerformanceCalculator.v1SecondSegBrakeRunwayTable1[result.inputs.conf];
+    speeds.v1DeltaRunway =
+      (v1BaseLength - result.params.adjustedTora) * ((result.inputs.tow / 1000) * v1RunwayFactor1 + v1RunwayFactor2);
+
+    // Altitude correction
+    const [v1AltFactor1, v1AltFactor2, v1AltFactor3, v1AltFactor4] = useTable2
+      ? A380842TakeoffPerformanceCalculator.v1SecondSegBrakeAltTable2[result.inputs.conf]
+      : A380842TakeoffPerformanceCalculator.v1SecondSegBrakeAltTable1[result.inputs.conf];
+    speeds.v1DeltaAlt =
+      result.params.pressureAlt *
+      ((result.inputs.tow / 1000) * v1AltFactor1 + v1AltFactor2) *
+      (result.params.adjustedTora * v1AltFactor3 + v1AltFactor4);
+
+    // Slope correction
+    const [v1SlopeFactor1, v1SlopeFactor2] =
+      A380842TakeoffPerformanceCalculator.v1SecondSegBrakeSlopeFactors[result.inputs.conf];
+    speeds.v1DeltaSlope =
+      result.inputs.slope * result.params.adjustedTora * ((result.inputs.tow / 1000) * v1SlopeFactor1 + v1SlopeFactor2);
+
+    // Wind correction
+    const [v1WindFactor1, v1WindFactor2] =
+      result.params.headwind >= 0
+        ? A380842TakeoffPerformanceCalculator.v1SecondSegBrakeHeadwindFactors[result.inputs.conf]
+        : A380842TakeoffPerformanceCalculator.v1SecondSegBrakeTailwindFactors[result.inputs.conf];
+    speeds.v1DeltaWind = result.params.headwind * ((result.inputs.tow / 1000) * v1WindFactor1 + v1WindFactor2);
+
+    return speeds.v1Base + speeds.v1DeltaRunway + speeds.v1DeltaAlt + speeds.v1DeltaSlope + speeds.v1DeltaWind;
+  }
+
+  /**
+   * Reconcile V-speeds with VMCG/VMCA/VMU limits and tire speed
+   * Ensures V1 <= VR <= V2 and all speeds meet minimum requirements
+   * @param result Result object with inputs and parameters
+   * @param v1 Calculated V1 in knots
+   * @param vR Calculated VR in knots
+   * @param v2 Calculated V2 in knots
+   * @returns [V1, VR, V2] tuple with reconciled speeds
+   */
+  private reconcileVSpeeds(
+    result: Partial<TakeoffPerformanceResult>,
+    v1: number,
+    vR: number,
+    v2: number,
+  ): [number, number, number] {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    // Get minimum speeds from VMCG/VMCA limits
+    const minV1Vmc = Math.ceil(
+      A380842TakeoffPerformanceCalculator.minimumV1Vmc.get(result.params.pressureAlt)
+    );
+    const minVrVmc = Math.ceil(
+      A380842TakeoffPerformanceCalculator.minimumVrVmc.get(result.params.pressureAlt)
+    );
+    const minV2Vmc = Math.ceil(
+      A380842TakeoffPerformanceCalculator.minimumV2Vmc[result.inputs.conf].get(result.params.pressureAlt)
+    );
+    const minv2Vmu = Math.ceil(
+      A380842TakeoffPerformanceCalculator.minimumV2Vmu[result.inputs.conf].get(
+        result.params.pressureAlt,
+        result.inputs.tow,
+      )
+    );
+
+    // Apply VMCG/VMCA/VMU limits and round
+    let v1Corrected = Math.round(Math.max(v1, minV1Vmc));
+    let vRCorrected = Math.round(Math.max(vR, minVrVmc));
+    let v2Corrected = Math.round(Math.max(v2, minV2Vmc, minv2Vmu));
+
+    // VR must be less than or equal to V2
+    if (vRCorrected > v2Corrected) {
+      vRCorrected = v2Corrected;
+      if (vRCorrected < minVrVmc) {
+        result.error = TakeoffPerfomanceError.VmcgVmcaLimits;
+      }
+    }
+
+    // VR limited by tire speed (A380 tire speed limit approximately 195 kt + 25 = 220 kt)
+    const maxTireSpeed = 220; // Approximate for A380, verify with AFM
+    if (v2Corrected > maxTireSpeed) {
+      const maxVr = Math.trunc(maxTireSpeed - (v2Corrected - maxTireSpeed));
+      if (vRCorrected > maxTireSpeed) {
+        result.error = TakeoffPerfomanceError.MaximumTireSpeed;
+      } else if (vRCorrected > maxVr) {
+        vRCorrected = maxVr;
+        if (vRCorrected < minVrVmc) {
+          result.error = TakeoffPerfomanceError.VmcgVmcaLimits;
+        }
+      }
+    }
+
+    // V1 must be less than or equal to VR
+    if (v1Corrected > vRCorrected) {
+      v1Corrected = vRCorrected;
+      if (v1Corrected < minV1Vmc) {
+        result.error = TakeoffPerfomanceError.VmcgVmcaLimits;
+      }
+    }
+
+    return [v1Corrected, vRCorrected, v2Corrected];
+  }
+}
+
+// ============================================================================
+// END OF A380-842 TAKEOFF PERFORMANCE CALCULATOR
+// ============================================================================
+//
+// USAGE EXAMPLE:
+// 
+// const calculator = new A380842TakeoffPerformanceCalculator();
+// 
+// const result = calculator.calculateTakeoffPerformance(
+//   480_000,           // TOW in kg
+//   true,              // Forward CG
+//   2,                 // CONF 2
+//   3000,              // TORA in meters
+//   0,                 // Slope (%)
+//   0,                 // Lineup angle (degrees)
+//   10,                // Headwind in knots
+//   0,                 // Elevation in feet
+//   1013.25,           // QNH in hPa
+//   25,                // OAT in °C
+//   TakeoffAntiIceSetting.Off,
+//   true,              // Packs on
+//   false,             // Not forcing TOGA
+//   RunwayCondition.Dry,
+//   36,                // CG in % MAC (optional)
+// );
+//
+// console.log('V1:', result.v1);
+// console.log('VR:', result.vR);
+// console.log('V2:', result.v2);
+// console.log('FLEX:', result.flex);
+// console.log('MTOW:', result.mtow);
+// console.log('Stab Trim:', result.stabTrim);
+//
+// ============================================================================
+// 
+// ⚠️⚠️⚠️ FINAL WARNING ⚠️⚠️⚠️
+// This calculator uses SCALED DATA based on A320 performance.
+// ALL data has been multiplied by weight ratio (512,000/79,000 ≈ 6.48)
+// and speeds increased by approximately 25 knots.
+//
+// THIS IS NOT REAL AIRBUS A380-842 PERFORMANCE DATA!
+// 
+// For real flight operations, you MUST obtain official performance data from:
+// - Airbus A380 Aircraft Flight Manual (AFM)
+// - Airbus A380 Flight Crew Operating Manual (FCOM)
+// - Airline-specific performance software
+//
+// This code is for SIMULATION AND EDUCATIONAL PURPOSES ONLY.
+// ============================================================================
