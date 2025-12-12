@@ -3353,4 +3353,833 @@ export class A380842TakeoffPerformanceCalculator implements TakeoffPerformanceCa
     return 0;
   }
 
-// To be continued - Part 9 (FINAL): V-speed calculations and utility methods...
+  /**
+   * Calculate FLEX temperature
+   * @param result Partial result object with limits calculated
+   * @param tvmcg TVMCG temperature
+   * @returns [flex temp, limiting factor] or [undefined, undefined] if no flex available
+   */
+  private calculateFlexTemp(
+    result: Partial<TakeoffPerformanceResult>,
+    tvmcg: number,
+  ): [number | undefined, LimitingFactor | undefined] {
+    if (
+      !result.inputs ||
+      !result.params ||
+      !result.limits ||
+      !result.tRefLimitingFactor ||
+      !result.tMaxLimitingFactor ||
+      !result.tFlexMaxLimitingFactor
+    ) {
+      throw new Error('Invalid result object!');
+    }
+
+    // Can use flex if TOW is below the tRef limit weight
+    if (result.inputs.tow < result.limits[result.tRefLimitingFactor].tRefLimit) {
+      let flexTemp: number | undefined;
+      let flexLimitingFactor: LimitingFactor | undefined;
+      let iterFrom: number;
+      let iterTo: number;
+      let fromLimitingFactor: LimitingFactor;
+      let fromLimitingWeights: LimitWeight;
+      let toLimitingFactor: LimitingFactor;
+      let toLimitingWeights: LimitWeight;
+
+      if (result.inputs.tow > result.limits[result.tMaxLimitingFactor].tMaxLimitNoBleed) {
+        // Interpolate between tRefLimit and tMaxLimit
+        iterFrom = result.params.tRef;
+        iterTo = result.params.tMax;
+        fromLimitingFactor = result.tRefLimitingFactor;
+        fromLimitingWeights = result.limits[result.tRefLimitingFactor];
+        toLimitingFactor = result.tMaxLimitingFactor;
+        toLimitingWeights = result.limits[result.tMaxLimitingFactor];
+      } else if (result.inputs.tow > result.limits[result.tFlexMaxLimitingFactor].tFlexMaxLimitNoBleed) {
+        // Interpolate between tMaxLimit and tFlexMaxLimit
+        iterFrom = result.params.tMax;
+        iterTo = result.params.tFlexMax;
+        fromLimitingFactor = result.tMaxLimitingFactor;
+        fromLimitingWeights = result.limits[result.tMaxLimitingFactor];
+        toLimitingFactor = result.tFlexMaxLimitingFactor;
+        toLimitingWeights = result.limits[result.tFlexMaxLimitingFactor];
+      } else {
+        // Interpolate between tFlexMax and tFlexMax + max bleed increment
+        iterFrom = result.params.tFlexMax;
+        iterTo = result.params.tFlexMax + 8;
+        fromLimitingFactor = result.tFlexMaxLimitingFactor;
+        fromLimitingWeights = result.limits[result.tFlexMaxLimitingFactor];
+        toLimitingFactor = result.tFlexMaxLimitingFactor;
+        toLimitingWeights = fromLimitingWeights;
+      }
+
+      for (let t = iterFrom; t <= iterTo; t++) {
+        const fromLimitTow = this.calculateFlexTow(result, fromLimitingFactor, fromLimitingWeights, t);
+        const toLimitTow = this.calculateFlexTow(result, toLimitingFactor, toLimitingWeights, t);
+        if (result.inputs.tow <= Math.min(fromLimitTow, toLimitTow)) {
+          flexTemp = t;
+          flexLimitingFactor = fromLimitTow <= toLimitTow ? fromLimitingFactor : toLimitingFactor;
+        }
+      }
+
+      if (flexTemp !== undefined && flexLimitingFactor !== undefined) {
+        // Apply anti-ice corrections
+        if (result.inputs.antiIce === TakeoffAntiIceSetting.Engine) {
+          flexTemp -= 2;
+        } else if (result.inputs.antiIce === TakeoffAntiIceSetting.EngineWing) {
+          flexTemp -= 6;
+        }
+        
+        // Apply packs correction
+        if (result.inputs.packs) {
+          flexTemp -= 2;
+        }
+
+        flexTemp = Math.min(flexTemp, result.params.tFlexMax);
+        flexTemp = Math.trunc(flexTemp);
+
+        // Apply wet runway correction
+        if (result.inputs.runwayCondition === RunwayCondition.Wet) {
+          const factors: ReadonlyFloat64Array = (
+            result.inputs.oat > tvmcg
+              ? A380842TakeoffPerformanceCalculator.wetFlexAdjustmentFactorsAboveTvmcg
+              : A380842TakeoffPerformanceCalculator.wetFlexAdjustmentFactorsAtOrBelowTvmcg
+          )[result.inputs.conf].get(A380842TakeoffPerformanceCalculator.vec4Cache, result.params.headwind);
+
+          const lengthAltCoef = result.params.adjustedTora - result.params.pressureAlt / 20;
+          const wetFlexAdjustment = Math.min(
+            0,
+            factors[0] * lengthAltCoef + factors[1],
+            factors[2] * lengthAltCoef + factors[3],
+          );
+          flexTemp -= wetFlexAdjustment;
+        }
+
+        if (flexTemp > result.inputs.oat) {
+          return [flexTemp, flexLimitingFactor];
+        }
+      }
+    }
+
+    return [undefined, undefined];
+  }
+
+  /**
+   * Calculate weight limits for a given limiting factor
+   */
+  private calculateWeightLimits(
+    limitingFactor: LimitingFactor,
+    result: Partial<TakeoffPerformanceResult>,
+  ): LimitWeight {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    const weights: Partial<LimitWeight> = {};
+
+    let baseFactors: typeof A380842TakeoffPerformanceCalculator.secondSegmentBaseFactor | undefined;
+    let slopeFactors: typeof A380842TakeoffPerformanceCalculator.runwaySlopeFactor;
+    let altFactors: typeof A380842TakeoffPerformanceCalculator.runwayPressureAltFactor;
+    let tempDeltaFunc: typeof this.calculateRunwayTempDelta;
+    let windDeltaFunc: typeof this.calculateRunwayWindDelta;
+
+    switch (limitingFactor) {
+      case LimitingFactor.Runway:
+        slopeFactors = A380842TakeoffPerformanceCalculator.runwaySlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.runwayPressureAltFactor;
+        tempDeltaFunc = this.calculateRunwayTempDelta;
+        windDeltaFunc = this.calculateRunwayWindDelta;
+        break;
+      case LimitingFactor.SecondSegment:
+        baseFactors = A380842TakeoffPerformanceCalculator.secondSegmentBaseFactor;
+        slopeFactors = A380842TakeoffPerformanceCalculator.secondSegmentSlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.secondSegmentPressureAltFactor;
+        tempDeltaFunc = this.calculateSecondSegmentTempDelta;
+        windDeltaFunc = this.calculateSecondSegmentWindDelta;
+        break;
+      case LimitingFactor.BrakeEnergy:
+        baseFactors = A380842TakeoffPerformanceCalculator.brakeEnergyBaseFactor;
+        slopeFactors = A380842TakeoffPerformanceCalculator.brakeEnergySlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.brakeEnergyPressureAltFactor;
+        tempDeltaFunc = this.calculateBrakeEnergyTempDelta;
+        windDeltaFunc = this.calculateBrakeEnergyWindDelta;
+        break;
+      case LimitingFactor.Vmcg:
+        baseFactors = A380842TakeoffPerformanceCalculator.vmcgBaseFactor;
+        slopeFactors = A380842TakeoffPerformanceCalculator.vmcgSlopeFactor;
+        altFactors = A380842TakeoffPerformanceCalculator.vmcgPressureAltFactor;
+        tempDeltaFunc = this.calculateVmcgTempDelta;
+        windDeltaFunc = this.calculateVmcgWindDelta;
+        break;
+      default:
+        throw new Error('Invalid limiting factor!');
+    }
+
+    // Base weight limits at sea level, ISA, etc.
+    if (limitingFactor === LimitingFactor.Runway) {
+      weights.baseLimit = this.calculateBaseRunwayPerfLimit(result.params.adjustedTora, result.inputs.conf);
+    } else {
+      if (!baseFactors) {
+        throw new Error('Missing base factors!');
+      }
+      weights.baseLimit = this.calculateBaseLimit(result.params.adjustedTora, result.inputs.conf, baseFactors);
+    }
+
+    // Correction for runway slope
+    weights.deltaSlope = 1000 * slopeFactors[result.inputs.conf] * result.params.adjustedTora * result.inputs.slope;
+    weights.slopeLimit = weights.baseLimit - weights.deltaSlope;
+
+    // Correction for pressure altitude
+    const [altFactor1, altFactor2] = altFactors[result.inputs.conf];
+    weights.deltaAlt = 1000 * result.params.pressureAlt * (result.params.pressureAlt * altFactor1 + altFactor2);
+    weights.altLimit = weights.slopeLimit - weights.deltaAlt;
+
+    // Correction for bleeds
+    const deltaBleed =
+      (result.inputs.antiIce === TakeoffAntiIceSetting.EngineWing ? 1_600 : 0) + 
+      (result.inputs.packs ? 1_500 : 0);
+
+    // Corrections for OAT
+    weights.oatDeltaTemp = tempDeltaFunc(
+      result.inputs.oat,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.oatDeltaWind = windDeltaFunc(
+      result.inputs.oat,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.oatLimitNoBleed = weights.altLimit - weights.oatDeltaTemp - weights.oatDeltaWind;
+    weights.oatLimit = weights.oatLimitNoBleed - deltaBleed;
+
+    // Corrections for Tref
+    weights.tRefDeltaTemp = tempDeltaFunc(
+      result.params.tRef,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.tRefDeltaWind = windDeltaFunc(
+      result.params.tRef,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.tRefLimitNoBleed = weights.altLimit - weights.tRefDeltaTemp - weights.tRefDeltaWind;
+    weights.tRefLimit = weights.tRefLimitNoBleed - deltaBleed;
+
+    // Corrections for Tmax
+    weights.tMaxDeltaTemp = tempDeltaFunc(
+      result.params.tMax,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.tMaxDeltaWind = windDeltaFunc(
+      result.params.tMax,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.tMaxLimitNoBleed = weights.altLimit - weights.tMaxDeltaTemp - weights.tMaxDeltaWind;
+    weights.tMaxLimit = weights.tMaxLimitNoBleed - deltaBleed;
+
+    // Corrections for TflexMax
+    weights.tFlexMaxDeltaTemp = tempDeltaFunc(
+      result.params.tFlexMax,
+      result.inputs.conf,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.pressureAlt,
+      result.params.isaTemp,
+    );
+    weights.tFlexMaxDeltaWind = windDeltaFunc(
+      result.params.tFlexMax,
+      result.inputs.conf,
+      result.params.isaTemp,
+      result.params.tRef,
+      result.params.tMax,
+      result.params.tFlexMax,
+      result.params.adjustedTora,
+      result.params.headwind,
+    );
+    weights.tFlexMaxLimitNoBleed = weights.altLimit - weights.tFlexMaxDeltaTemp - weights.tFlexMaxDeltaWind;
+    weights.tFlexMaxLimit = weights.tFlexMaxLimitNoBleed - deltaBleed;
+
+    return weights as LimitWeight;
+  }
+
+  /**
+   * Determine which factor is limiting the takeoff weight most
+   */
+  private getLimitingFactor(
+    temp: 'oatLimit' | 'tRefLimit' | 'tMaxLimit' | 'tFlexMaxLimit',
+    result: Partial<TakeoffPerformanceResult>,
+  ): LimitingFactor {
+    if (!result.limits) {
+      throw new Error('Invalid result object!');
+    }
+
+    let limitingWeight = Infinity;
+    let limitingFactor = LimitingFactor.Runway;
+
+    for (const factor of Object.values(LimitingFactor) as LimitingFactor[]) {
+      const weights = result.limits[factor];
+      if (weights !== undefined && weights[temp] < limitingWeight) {
+        limitingWeight = weights[temp];
+        limitingFactor = factor;
+      }
+    }
+
+    return limitingFactor;
+  }
+
+  /**
+   * Calculate TVMCG (temperature above which VMCG limits on wet runway)
+   */
+  private calculateTvmcg(inputs: TakeoffPerformanceInputs, params: TakeoffPerformanceParameters): number {
+    const factors: LerpVectorLookupTable = A380842TakeoffPerformanceCalculator.tvmcgFactors[inputs.conf];
+    const [factor1, factor2] = factors.get(
+      A380842TakeoffPerformanceCalculator.vec2Cache,
+      Math.max(params.headwind, -15),
+    );
+    return factor1 * (params.adjustedTora - params.pressureAlt / 10) + factor2;
+  }
+
+  // ============================================================================
+  // TEMPERATURE DELTA CALCULATIONS
+  // ============================================================================
+
+  /** Calculate runway temperature correction in kg */
+  private calculateRunwayTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.runwayTemperatureFactor[conf];
+    const runwayAltFactor = runwayLength - pressureAlt / 12;
+    
+    let weightDelta = 1000 * (runwayAltFactor * tempFactors[0] + tempFactors[1]) * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta += 1000 * (runwayAltFactor * tempFactors[2] + tempFactors[3]) * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * (runwayAltFactor * tempFactors[4] + tempFactors[5]) * (temp - tMax);
+    }
+    return weightDelta;
+  }
+
+  /** Calculate second segment temperature correction in kg */
+  private calculateSecondSegmentTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.secondSegmentTemperatureFactor[conf];
+
+    let weightDelta =
+      1000 * ((runwayLength - pressureAlt / 5) * tempFactors[0] + tempFactors[1]) * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta +=
+        1000 * ((runwayLength - pressureAlt / 5) * tempFactors[2] + tempFactors[3]) * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * ((runwayLength - pressureAlt / 5) * tempFactors[4] + tempFactors[5]) * (temp - tMax);
+    }
+    return weightDelta;
+  }
+
+  /** Calculate brake energy temperature correction in kg */
+  private calculateBrakeEnergyTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.brakeEnergyTemperatureFactor[conf];
+
+    let weightDelta = 1000 * tempFactors[0] * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta += 1000 * tempFactors[1] * (Math.min(temp, tMax) - tRef);
+    }
+    // No correction above Tmax
+    return weightDelta;
+  }
+
+  /** Calculate VMCG temperature correction in kg */
+  private calculateVmcgTempDelta(
+    temp: number,
+    conf: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    pressureAlt: number,
+    isaTemp: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const tempFactors = A380842TakeoffPerformanceCalculator.vmcgTemperatureFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * tempFactors[0] + tempFactors[1]) * (Math.min(temp, tRef) - isaTemp);
+    if (temp > tRef) {
+      weightDelta += 1000 * (runwayLength * tempFactors[2] + tempFactors[3]) * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * (runwayLength * tempFactors[4] + tempFactors[5]) * (temp - tMax);
+    }
+    return weightDelta;
+  }
+
+  // ============================================================================
+  // WIND DELTA CALCULATIONS
+  // ============================================================================
+
+  /** Calculate runway wind correction in kg (negative is positive increment) */
+  private calculateRunwayWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const windFactors =
+      wind >= 0
+        ? A380842TakeoffPerformanceCalculator.runwayHeadWindFactor[conf]
+        : A380842TakeoffPerformanceCalculator.runwayTailWindFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+    if (temp > tRef) {
+      weightDelta += 1000 * windFactors[2] * wind * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * windFactors[3] * wind * (temp - tMax);
+    }
+
+    // Cover edge case near data ends
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+  /** Calculate second segment wind correction in kg */
+  private calculateSecondSegmentWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const windFactors =
+      wind >= 0
+        ? A380842TakeoffPerformanceCalculator.secondSegmentHeadWindFactor[conf]
+        : A380842TakeoffPerformanceCalculator.secondSegmentTailWindFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+    if (temp > tRef) {
+      weightDelta += 1000 * windFactors[2] * wind * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * windFactors[3] * wind * (temp - tMax);
+    }
+
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+  /** Calculate brake energy wind correction in kg */
+  private calculateBrakeEnergyWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    const windFactors =
+      wind >= 0
+        ? A380842TakeoffPerformanceCalculator.brakeEnergyHeadWindFactor[conf]
+        : A380842TakeoffPerformanceCalculator.brakeEnergyTailWindFactor[conf];
+
+    let weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+    if (temp > tRef) {
+      weightDelta += 1000 * windFactors[2] * wind * (Math.min(temp, tMax) - tRef);
+    }
+    if (temp > tMax) {
+      weightDelta += 1000 * windFactors[3] * wind * (temp - tMax);
+    }
+
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+  /** Calculate VMCG wind correction in kg */
+  private calculateVmcgWindDelta(
+    temp: number,
+    conf: number,
+    isaTemp: number,
+    tRef: number,
+    tMax: number,
+    tFlexMax: number,
+    runwayLength: number,
+    wind: number,
+  ): number {
+    if (temp > tFlexMax) {
+      return NaN;
+    }
+
+    let weightDelta: number;
+
+    if (wind >= 0) {
+      const windFactors = A380842TakeoffPerformanceCalculator.vmcgHeadWindFactor[conf];
+
+      weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+      if (temp > isaTemp) {
+        weightDelta +=
+          1000 * (runwayLength * windFactors[2] + windFactors[3]) * wind * (Math.min(temp, tRef) - isaTemp);
+      }
+      if (temp > tRef) {
+        weightDelta += 1000 * (runwayLength * windFactors[4] + windFactors[5]) * wind * (Math.min(temp, tMax) - tRef);
+      }
+      if (temp >= tMax) {
+        weightDelta += 1000 * (runwayLength * windFactors[6] + windFactors[7]) * wind * (temp - tMax);
+      }
+    } else {
+      const windFactors = A380842TakeoffPerformanceCalculator.vmcgTailWindFactor[conf];
+
+      weightDelta = 1000 * (runwayLength * windFactors[0] + windFactors[1]) * wind;
+      if (temp > isaTemp) {
+        weightDelta +=
+          1000 * (runwayLength * windFactors[2] + windFactors[3]) * wind * (Math.min(temp, tRef) - isaTemp);
+      }
+      if (temp > tRef) {
+        weightDelta += 1000 * windFactors[4] * wind * (Math.min(temp, tMax) - tRef);
+      }
+      if (temp > tMax) {
+        weightDelta += 1000 * windFactors[5] * wind * (temp - tMax);
+      }
+    }
+
+    if (Math.sign(weightDelta) === Math.sign(wind)) {
+      return 0;
+    }
+    return weightDelta;
+  }
+
+ // ============================================================================
+  // V-SPEED CALCULATION METHODS
+  // ============================================================================
+
+  /**
+   * Calculate V-speeds (V1, VR, V2) for current conditions
+   * @param result Partial result with inputs and parameters
+   * @param applyForwardCgSpeedCorrection Apply forward CG speed corrections
+   * @param tvmcg TVMCG temperature
+   */
+  private calculateVSpeeds(
+    result: Partial<TakeoffPerformanceResult>,
+    applyForwardCgSpeedCorrection: boolean,
+    tvmcg: number,
+  ): void {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    // For dry or wet runway, calculate using standard method
+    if (result.inputs.runwayCondition === RunwayCondition.Dry || 
+        result.inputs.runwayCondition === RunwayCondition.Wet) {
+      this.calculateDryVSpeeds(result, applyForwardCgSpeedCorrection);
+      
+      if (result.inputs.runwayCondition === RunwayCondition.Dry) {
+        // Use dry speeds directly
+        result.v1 = result.intermediateSpeeds?.dryV1;
+        result.vR = result.intermediateSpeeds?.dryVR;
+        result.v2 = result.intermediateSpeeds?.dryV2;
+      } else {
+        // Wet runway - apply corrections
+        if (!result.intermediateSpeeds) {
+          throw new Error('No dry speeds calculated!');
+        }
+
+        const v1Factors: ReadonlyFloat64Array = (
+          result.inputs.oat > tvmcg
+            ? A380842TakeoffPerformanceCalculator.wetV1AdjustmentFactorsAboveTvmcg
+            : A380842TakeoffPerformanceCalculator.wetV1AdjustmentFactorsAtOrBelowTvmcg
+        )[result.inputs.conf].get(A380842TakeoffPerformanceCalculator.vec4Cache, result.params.headwind);
+
+        const vRFactors: ReadonlyFloat64Array | undefined = (
+          result.inputs.oat > tvmcg
+            ? undefined
+            : A380842TakeoffPerformanceCalculator.wetVRAdjustmentFactorsAtOrBelowTvmcg
+        )?.[result.inputs.conf].get(A380842TakeoffPerformanceCalculator.vec4Cache, result.params.headwind);
+
+        const v2Factors: ReadonlyFloat64Array | undefined = (
+          result.inputs.oat > tvmcg
+            ? undefined
+            : A380842TakeoffPerformanceCalculator.wetV2AdjustmentFactorsAtOrBelowTvmcg
+        )?.[result.inputs.conf].get(A380842TakeoffPerformanceCalculator.vec4Cache, result.params.headwind);
+
+        const lengthAltCoef = result.params.adjustedTora - result.params.pressureAlt / 20;
+        const wetV1Adjustment = Math.min(
+          0,
+          v1Factors[0] * lengthAltCoef + v1Factors[1],
+          v1Factors[2] * lengthAltCoef + v1Factors[3],
+        );
+        const wetVRAdjustment = vRFactors
+          ? Math.min(0, vRFactors[0] * lengthAltCoef + vRFactors[1], vRFactors[2] * lengthAltCoef + vRFactors[3])
+          : 0;
+        const wetV2Adjustment = v2Factors
+          ? Math.min(0, v2Factors[0] * lengthAltCoef + v2Factors[1], v2Factors[2] * lengthAltCoef + v2Factors[3])
+          : 0;
+
+        [result.v1, result.vR, result.v2] = this.reconcileVSpeeds(
+          result,
+          result.intermediateSpeeds.dryV1 - wetV1Adjustment,
+          result.intermediateSpeeds.dryVR - wetVRAdjustment,
+          result.intermediateSpeeds.dryV2 - wetV2Adjustment,
+        );
+      }
+      return;
+    }
+
+    // For contaminated runways - would need contaminated runway V-speed tables
+    // This is simplified - full implementation would use contaminated tables
+    result.error = TakeoffPerfomanceError.InvalidData;
+  }
+
+  /**
+   * Calculate V-speeds for dry runway
+   * @param result Partial result object
+   * @param applyForwardCgSpeedCorrection Apply forward CG corrections
+   */
+  private calculateDryVSpeeds(
+    result: Partial<TakeoffPerformanceResult>,
+    applyForwardCgSpeedCorrection: boolean
+  ): void {
+    if (!result.inputs || !result.params) {
+      throw new Error('Invalid result object!');
+    }
+
+    let v1: number;
+    let vR: number;
+    let v2: number;
+
+    const speeds: Partial<TakeoffPerformanceSpeeds> = {};
+
+    const limitingFactor =
+      result.params.flexLimitingFactor !== undefined 
+        ? result.params.flexLimitingFactor 
+        : result.oatLimitingFactor;
+
+    if (limitingFactor === LimitingFactor.Runway || limitingFactor === LimitingFactor.Vmcg) {
+      // ====== RUNWAY/VMCG LIMITED ======
+      
+      // V2 calculation
+      const [v2BaseFactor1, v2BaseFactor2]: [number, number] =
+        A380842TakeoffPerformanceCalculator.v2RunwayVmcgBaseFactors[result.inputs.conf];
+      speeds.v2Base = (result.inputs.tow / 1000) * v2BaseFactor1 + v2BaseFactor2;
+
+      const [v2AltFactor1, v2AltFactor2] =
+        A380842TakeoffPerformanceCalculator.v2RunwayVmcgAltFactors[result.inputs.conf];
+      speeds.v2DeltaAlt = ((result.inputs.tow / 1000) * v2AltFactor1 + v2AltFactor2) * result.params.pressureAlt;
+
+      v2 = speeds.v2Base + speeds.v2DeltaAlt;
+
+      // VR calculation
+      const [vRBaseFactor1, vRBaseFactor2]: [number, number] =
+        A380842TakeoffPerformanceCalculator.vRRunwayVmcgBaseFactors[result.inputs.conf];
+      speeds.vRBase = (result.inputs.tow / 1000) * vRBaseFactor1 + vRBaseFactor2;
+
+      const [vRBaseLength, vRRunwayFactor1, vRRunwayFactor2] =
+        A380842TakeoffPerformanceCalculator.vRRunwayVmcgRunwayFactors[result.inputs.conf];
+      speeds.vRDeltaRunway =
+        (vRBaseLength - result.params.adjustedTora) * ((result.inputs.tow / 1000) * vRRunwayFactor1 + vRRunwayFactor2);
+
+      const [vRFactorAlt1, vRFactorAlt2] =
+        A380842TakeoffPerformanceCalculator.vRRunwayVmcgAltFactors[result.inputs.conf];
+      speeds.vRDeltaAlt = result.params.pressureAlt * ((result.inputs.tow / 1000) * vRFactorAlt1 + vRFactorAlt2);
+
+      const vRFactorSlope = A380842TakeoffPerformanceCalculator.vRRunwayVmcgSlopeFactors[result.inputs.conf];
+      speeds.vRDeltaSlope = result.inputs.slope * result.params.adjustedTora * vRFactorSlope;
+
+      const [vRWindFactor1, vRWindFactor2] =
+        result.params.headwind >= 0
+          ? A380842TakeoffPerformanceCalculator.vRRunwayVmcgHeadwindFactors[result.inputs.conf]
+          : A380842TakeoffPerformanceCalculator.vRRunwayVmcgTailwindFactors[result.inputs.conf];
+      speeds.vRDeltaWind = result.params.headwind * ((result.inputs.tow / 1000) * vRWindFactor1 + vRWindFactor2);
+
+      vR =
+        speeds.vRBase +
+        speeds.vRDeltaRunway +
+        speeds.vRDeltaAlt +
+        speeds.vRDeltaSlope +
+        speeds.vRDeltaWind +
+        (applyForwardCgSpeedCorrection ? -1 : 0);
+
+      // V1 calculation
+      const [v1BaseFactor1, v1BaseFactor2]: [number, number] =
+        A380842TakeoffPerformanceCalculator.v1RunwayVmcgBaseFactors[result.inputs.conf];
+      speeds.v1Base = (result.inputs.tow / 1000) * v1BaseFactor1 + v1BaseFactor2;
+
+      const [v1BaseLength, v1RunwayFactor1, v1RunwayFactor2] =
+        A380842TakeoffPerformanceCalculator.v1RunwayVmcgRunwayFactors[result.inputs.conf];
+      speeds.v1DeltaRunway =
+        (v1BaseLength - result.params.adjustedTora) * ((result.inputs.tow / 1000) * v1RunwayFactor1 + v1RunwayFactor2);
+
+      const [v1FactorAlt1, v1FactorAlt2] =
+        A380842TakeoffPerformanceCalculator.v1RunwayVmcgAltFactors[result.inputs.conf];
+      speeds.v1DeltaAlt = result.params.pressureAlt * ((result.inputs.tow / 1000) * v1FactorAlt1 + v1FactorAlt2);
+
+      const v1FactorSlope = A380842TakeoffPerformanceCalculator.v1RunwayVmcgSlopeFactors[result.inputs.conf];
+      speeds.v1DeltaSlope = result.inputs.slope * result.params.adjustedTora * v1FactorSlope;
+
+      const [v1WindFactor1, v1WindFactor2] =
+        result.params.headwind >= 0
+          ? A380842TakeoffPerformanceCalculator.v1RunwayVmcgHeadwindFactors[result.inputs.conf]
+          : A380842TakeoffPerformanceCalculator.v1RunwayVmcgTailwindFactors[result.inputs.conf];
+      speeds.v1DeltaWind = result.params.headwind * ((result.inputs.tow / 1000) * v1WindFactor1 + v1WindFactor2);
+
+      v1 = speeds.v1Base + speeds.v1DeltaRunway + speeds.v1DeltaAlt + speeds.v1DeltaSlope + speeds.v1DeltaWind;
+
+    } else {
+      // ====== SECOND SEGMENT / BRAKE ENERGY LIMITED ======
+      
+      // V2 calculation
+      const v2NoWind = this.calculateSecondSegBrakeV2(speeds, result, false, false);
+      const [v2ThresholdFactor1, v2ThresholdFactor2] =
+        A380842TakeoffPerformanceCalculator.v2SecondSegBrakeThresholds[result.inputs.conf];
+      speeds.v2Table2Threshold = result.params.adjustedTora * v2ThresholdFactor1 + v2ThresholdFactor2;
+      const useTable2 = v2NoWind >= speeds.v2Table2Threshold;
+      
+      if (useTable2) {
+        speeds.v2Table1NoWind = v2NoWind;
+      }
+      v2 = this.calculateSecondSegBrakeV2(speeds, result, true, useTable2);
+
+      // VR calculation
+      const [vRBaseFactor1, vRBaseFactor2]: [number, number] = useTable2
+        ? A380842TakeoffPerformanceCalculator.vRSecondSegBrakeBaseTable2[result.inputs.conf]
+        : A380842TakeoffPerformanceCalculator.vRSecondSegBrakeBaseTable1[result.inputs.conf];
+      speeds.vRBase = (result.inputs.tow / 1000) * vRBaseFactor1 + vRBaseFactor2;
+
+      const [vRBaseLength, vRRunwayFactor1, vRRunwayFactor2] = useTable2
+        ? A380842TakeoffPerformanceCalculator.vRSecondSegBrakeRunwayTable2[result.inputs.conf]
+        : A380842TakeoffPerformanceCalculator.vRSecondSegBrakeRunwayTable1[result.inputs.conf];
+      speeds.vRDeltaRunway =
+        (vRBaseLength - result.params.adjustedTora) * ((result.inputs.tow / 1000) * vRRunwayFactor1 + vRRunwayFactor2);
+
+      const [vRAltFactor1, vRAltFactor2, vRAltFactor3, vRAltFactor4] = useTable2
+        ? A380842TakeoffPerformanceCalculator.vRSecondSegBrakeAltTable2[result.inputs.conf]
+        : A380842TakeoffPerformanceCalculator.vRSecondSegBrakeAltTable1[result.inputs.conf];
+      speeds.vRDeltaAlt =
+        result.params.pressureAlt *
+        ((result.inputs.tow / 1000) * vRAltFactor1 + vRAltFactor2) *
+        (result.params.adjustedTora * vRAltFactor3 + vRAltFactor4);
+
+      const [vRSlopeFactor1, vRSlopeFactor2] =
+        A380842TakeoffPerformanceCalculator.vRSecondSegBrakeSlopeFactors[result.inputs.conf];
+      speeds.vRDeltaSlope =
+        result.inputs.slope *
+        result.params.adjustedTora *
+        ((result.inputs.tow / 1000) * vRSlopeFactor1 + vRSlopeFactor2);
+
+      const [vRWindFactor1, vRWindFactor2] =
+        result.params.headwind >= 0
+          ? A380842TakeoffPerformanceCalculator.vRSecondSegBrakeHeadwindFactors[result.inputs.conf]
+          : A380842TakeoffPerformanceCalculator.vRSecondSegBrakeTailwindFactors[result.inputs.conf];
+      speeds.vRDeltaWind = result.params.headwind * ((result.inputs.tow / 1000) * vRWindFactor1 + vRWindFactor2);
+
+      vR = speeds.vRBase + speeds.vRDeltaRunway + speeds.vRDeltaAlt + speeds.vRDeltaSlope + speeds.vRDeltaWind;
+
+      // V1 calculation
+      v1 = this.calculateSecondSegBrakeV1(speeds, result, useTable2);
+      if (useTable2 && v2 - v1 > 8) {
+        speeds.v1Table2 = v1;
+        v1 = this.calculateSecondSegBrakeV1(speeds, result, false);
+      }
+    }
+
+    [speeds.dryV1, speeds.dryVR, speeds.dryV2] = this.reconcileVSpeeds(result, v1, vR, v2);
+
+    result.intermediateSpeeds = speeds as TakeoffPerformanceSpeeds;
+  }
