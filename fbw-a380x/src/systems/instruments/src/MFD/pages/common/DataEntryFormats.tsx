@@ -1389,27 +1389,6 @@ export class ShortAlphanumericFormat implements DataEntryFormat<string> {
   }
 }
 
-export class AircraftType implements DataEntryFormat<string> {
-  public placeholder = '----';
-
-  public maxDigits = 4;
-
-  public format(value: string) {
-    if (!value) {
-      return [this.placeholder, null, null] as FieldFormatTuple;
-    }
-    return [value, null, null] as FieldFormatTuple;
-  }
-
-  public async parse(input: string) {
-    if (input === '' || input === this.placeholder) {
-      return null;
-    }
-
-    return input;
-  }
-}
-
 export class AtisCode implements DataEntryFormat<string> {
   public placeholder = '-';
 

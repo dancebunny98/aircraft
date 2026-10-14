@@ -358,7 +358,15 @@ export function pageForUrl(
     case 'atccom/d-atis/received':
       return <MfdAtccomDAtisReceived pageTitle="D-ATIS/RECEIVED" bus={bus} mfd={mfd} atcService={atcService} />;
     case 'atccom/request':
-      return <MfdAtccomRequest pageTitle="REQUEST" bus={bus} mfd={mfd} atcService={atcService} />;
+      return (
+        <MfdAtccomRequest
+          pageTitle="REQUEST"
+          bus={bus}
+          mfd={mfd}
+          atcService={atcService}
+          callsign={fmcService.master.fmgc.data.atcCallsign}
+        />
+      );
 
     default:
       return (

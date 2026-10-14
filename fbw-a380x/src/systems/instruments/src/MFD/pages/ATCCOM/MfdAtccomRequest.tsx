@@ -1,262 +1,155 @@
-import { ArraySubject, DisplayComponent, FSComponent, Subject, VNode } from '@microsoft/msfs-sdk';
+// Copyright (c) 2026 FlyByWire Simulations
+// SPDX-License-Identifier: GPL-3.0
 
-import './MfdAtccomRequest.scss';
-import { AtccomMfdPageProps } from 'instruments/src/MFD/MFD';
+import { DisplayComponent, FSComponent, MappedSubject, Subject, Subscribable, Subscription, VNode } from '@microsoft/msfs-sdk';
+import { DclMessage } from '@datalink/common';
+import { FmsData } from '@flybywiresim/fbw-sdk';
+import { AtccomMfdPageProps } from '../../MFD';
+import { Button } from '../../../MsfsAvionicsCommon/UiWidgets/Button';
+import { InputField } from '../../../MsfsAvionicsCommon/UiWidgets/InputField';
+import { A380FmsError } from '../../shared/A380FmsError';
+import { ActivePageTitleBar } from '../common/ActivePageTitleBar';
+import { AirportFormat, AtisCode, LongAlphanumericFormat, ShortAlphanumericFormat } from '../common/DataEntryFormats';
 import { AtccomFooter } from './MfdAtccomFooter';
 
-import { Button } from 'instruments/src/MsfsAvionicsCommon/UiWidgets/Button';
-import { RequestMenuButton } from 'instruments/src/MFD/pages/common/RequestMenuButton';
-import { ActivePageTitleBar } from 'instruments/src/MFD/pages/common/ActivePageTitleBar';
-import { DropdownMenu } from 'instruments/src/MsfsAvionicsCommon/UiWidgets/DropdownMenu';
-import { MaxRequestElements, MessageFrame, MessageTable } from 'instruments/src/MFD/pages/ATCCOM/Messages/Registry';
-import { DclMessage } from '@datalink/common';
+import './MfdAtccomRequest.scss';
 
-interface MfdAtccomRequestProps extends AtccomMfdPageProps {}
+interface MfdAtccomRequestProps extends AtccomMfdPageProps {
+  callsign: Subscribable<string | null>;
+}
 
 export class MfdAtccomRequest extends DisplayComponent<MfdAtccomRequestProps> {
-  private dropdownMenuRef = FSComponent.createRef<DropdownMenu>();
+  private readonly callsign = Subject.create('');
+  private readonly origin = Subject.create('');
+  private readonly destination = Subject.create('');
+  private readonly gate = Subject.create('');
+  private readonly atis = Subject.create('');
+  private readonly freeText = Subject.create('');
+  private readonly transferred = Subject.create(false);
+  private readonly status = Subject.create('');
+  private readonly subscriptions: Subscription[] = [];
 
-  private elements: { id: string; message: undefined; readyToSend: boolean }[] = [];
-  private FanMode: string = 'A';
+  private readonly canTransfer = MappedSubject.create(
+    ([callsign, origin, destination, transferred]) =>
+      !transferred && /^[A-Z0-9]{2,10}$/i.test(callsign) && /^[A-Z]{4}$/i.test(origin) && /^[A-Z]{4}$/i.test(destination),
+    this.callsign,
+    this.origin,
+    this.destination,
+    this.transferred,
+  );
 
-  private messageElements = ArraySubject.create<MessageFrame>();
-
-  protected onNewData() {}
-
-  private elementDelete = (elementIndex: number) => {
-    this.elements.splice(elementIndex, 1);
-    this.renderElements();
-  };
-
-  private onSelect(frameName: string): void {
-    if (!MessageTable[frameName]) {
-      return console.log('Request frame not found: ' + frameName);
-    }
-
-    if (
-      MessageTable[frameName].singleMessage ||
-      (this.elements.length !== 0 && MessageTable[this.elements[0].id].singleMessage)
-    ) {
-      this.elements = [];
-    }
-
-    // check and swap frame is frames are to be exchanged
-    if (MessageTable[frameName].exchanging !== undefined) {
-      for (let i = 0; i < this.elements.length; i++) {
-        if (MessageTable[frameName].exchanging === this.elements[i].id) {
-          this.elements.splice(i, 1, { id: frameName, message: undefined, readyToSend: false });
-          this.renderElements();
-          return;
-        }
-      }
-    }
-
-    if (this.elements.length < MaxRequestElements) {
-      this.elements.push({ id: frameName, message: undefined, readyToSend: false });
-      this.renderElements();
-    }
-  }
-
-  private createDclMessage(data) {
-    const formattedMessage = new DclMessage();
-    formattedMessage.Callsign = data.callsign;
-    formattedMessage.Origin = data.from;
-    formattedMessage.Destination = data.to;
-    formattedMessage.AcType = 'A388';
-    formattedMessage.Atis = data.atis;
-    formattedMessage.Gate = data.gate;
-    formattedMessage.Freetext = data.freetext.filter((n) => n);
-    formattedMessage.Station = data.station;
-
-    return formattedMessage;
-  }
-
-  private transferToMailbox(): void {
-    console.log(this.messageElements.getArray());
-    // check for DCL message
-    if (this.elements[0].id == 'RequestDepartureClearance') {
-      // register dcl message
-      this.props.atcService.registerMessages([this.createDclMessage(this.messageElements.getArray()[0].message)]);
-    }
-  }
-
-  // Convert this to use a subscription when elements is changed
-  private renderElements(): void {
-    FSComponent.remove(document.getElementById('request-frame-0'));
-    FSComponent.remove(document.getElementById('request-frame-1'));
-    FSComponent.remove(document.getElementById('request-frame-2'));
-    FSComponent.remove(document.getElementById('request-frame-3'));
-    FSComponent.remove(document.getElementById('request-frame-4'));
-
-    this.elements.forEach((element, index) => {
-      if (MessageTable[element.id]) {
-        FSComponent.render(
-          <div id={`request-frame-${index}`} className="request-frame"></div>,
-          document.getElementById('atccom-request-body'),
-        );
-        FSComponent.render(
-          MessageTable[element.id].visualization(this.props, this.FanMode, index, this.messageElements, () =>
-            this.elementDelete(index),
-          ),
-          document.getElementById(`request-frame-${index}`),
-        );
-      }
-    });
-  }
+  private readonly transferDisabled = this.canTransfer.map((canTransfer) => !canTransfer);
 
   public onAfterRender(node: VNode): void {
     super.onAfterRender(node);
+    const fms = this.props.bus.getSubscriber<FmsData>();
+    this.subscriptions.push(
+      this.props.callsign.sub((callsign) => {
+        if (callsign && !this.callsign.get()) this.callsign.set(callsign);
+      }, true),
+      fms.on('fmsOrigin').handle((origin) => {
+        if (!this.origin.get()) this.origin.set(origin);
+      }),
+      fms.on('fmsDestination').handle((destination) => {
+        if (!this.destination.get()) this.destination.set(destination);
+      }),
+    );
+    for (const field of [this.callsign, this.origin, this.destination, this.gate, this.atis, this.freeText]) {
+      this.subscriptions.push(
+        field.sub(() => {
+          this.transferred.set(false);
+          this.status.set('');
+        }),
+      );
+    }
   }
 
-  render(): VNode {
+  private transferToMailbox(): void {
+    if (!this.canTransfer.get()) return;
+    const message = new DclMessage();
+    message.Callsign = this.callsign.get().toUpperCase();
+    message.Origin = this.origin.get().toUpperCase();
+    message.Destination = this.destination.get().toUpperCase();
+    message.Station = message.Origin;
+    message.AcType = 'A388';
+    message.Gate = this.gate.get().toUpperCase();
+    message.Atis = this.atis.get().toUpperCase();
+    message.Freetext = this.freeText.get() ? [this.freeText.get()] : [];
+    this.props.atcService.registerMessages([message]);
+    this.transferred.set(true);
+    this.status.set('TRANSFERRED TO MAILBOX');
+  }
+
+  public destroy(): void {
+    this.subscriptions.forEach((subscription) => subscription.destroy());
+    this.canTransfer.destroy();
+    this.transferDisabled.destroy();
+    super.destroy();
+  }
+
+  public render(): VNode {
+    const inputProps = {
+      hEventConsumer: this.props.mfd.hEventConsumer,
+      interactionMode: this.props.mfd.interactionMode,
+      containerStyle: 'width: 180px;',
+      alignText: 'center' as const,
+      errorHandler: (error: A380FmsError) => this.props.atcService.showAtcErrorMessage(error.type, error.details),
+    };
     return (
       <>
-        <ActivePageTitleBar
-          activePage={Subject.create('CONNECT')}
-          offset={Subject.create('')}
-          eoIsActive={Subject.create(false)}
-          tmpyIsActive={Subject.create(false)}
-        />
-        {/* begin page content */}
+        <ActivePageTitleBar activePage={Subject.create('REQUEST')} offset={Subject.create('')} />
         <div class="mfd-page-container">
-          <div id="atccom-request-container">
-            <div id="atccom-request-body"></div>
-            <div id="atccom-request-menu">
-              <RequestMenuButton
-                label="VERTICAL"
-                idPrefix="Request_Vertical_Menu"
-                onClick={() => {}}
-                buttonStyle="width:180px;"
-                menuItems={Subject.create([
-                  { label: 'CLIMB TO', action: () => this.onSelect('RequestClimb') },
-                  { label: 'DESCEND TO', action: () => this.onSelect('RequestDescend') },
-                  { label: 'ALT/FL', action: () => this.onSelect('RequestLevel') },
-                  { label: 'BLOCK ALT/FL', action: () => this.onSelect('RequestLevelBlock') },
-                  { label: 'CRUISE CLIMB', action: () => this.onSelect('RequestCruiseClimb') },
-                  { label: 'ITP', action: () => this.onSelect('RequestITP') },
-                ])}
-              />
-              <RequestMenuButton
-                label="LATERAL"
-                idPrefix="Request_Lateral_Menu"
-                onClick={() => {}}
-                buttonStyle="width:180px;"
-                menuItems={Subject.create([
-                  { label: 'DIRECT TO', action: () => this.onSelect('RequestDirect') },
-                  { label: 'OFFSET', action: () => this.onSelect('RequestOffset') },
-                  { label: 'WX DEVIATION', action: () => this.onSelect('RequestWeatherDeviation') },
-                  { label: 'HEADING', action: () => this.onSelect('RequestHeading') },
-                  { label: 'TRACK', action: () => this.onSelect('RequestGroundTrack') },
-                  { label: 'SID/STAR', action: () => {} },
-                  { label: 'TAILORED ARRIVAL', action: () => {} },
-                  { label: 'REROUTING', action: () => {} },
-                ])}
-              />
-              <RequestMenuButton
-                label="SPEED"
-                idPrefix="Request_Speed_Menu"
-                onClick={() => {}}
-                buttonStyle="width:180px;"
-                menuItems={Subject.create([
-                  { label: 'SPEED', action: () => {} },
-                  { label: 'SPEED RANGE', action: () => {} },
-                ])}
-              />
-              <RequestMenuButton
-                label="CLEARANCE"
-                idPrefix="Request_Clearance_Menu"
-                onClick={() => {}}
-                buttonStyle="width:180px;"
-                menuItems={Subject.create([
-                  { label: 'DEPARTURE', action: () => this.onSelect('RequestDepartureClearance') },
-                  { label: 'OCEANIC', action: () => this.onSelect('RequestOceanicClearance') },
-                  { label: 'GENERIC', action: () => this.onSelect('RequestGenericClearance') },
-                ])}
-              />
-              <RequestMenuButton
-                label="WHEN CAN<br />WE EXPECT"
-                idPrefix="Request_WhenCanWeExpect_Menu"
-                onClick={() => {}}
-                buttonStyle="width:180px;"
-                menuItems={Subject.create([
-                  { label: 'HIGHER LEVEL', action: () => {} },
-                  { label: 'LOWER LEVEL', action: () => {} },
-                  { label: 'CLIMB TO', action: () => {} },
-                  { label: 'DESCEND TO', action: () => {} },
-                  { label: 'CRUISE CLIMB', action: () => {} },
-                  { label: 'SPEED', action: () => {} },
-                  { label: 'SPEED RANGE', action: () => {} },
-                  { label: 'BACK ON ROUTE', action: () => {} },
-                ])}
-              />
-              <RequestMenuButton
-                label="OTHER"
-                idPrefix="Request_Other_Menu"
-                onClick={() => {}}
-                buttonStyle="width:180px;"
-                menuItems={Subject.create([
-                  { label: 'FREETEXT', action: () => {} },
-                  { label: 'VOICE CONTACT', action: () => {} },
-                  { label: 'OWN SEPARATION & VMC', action: () => {} },
-                  { label: 'VMC DES', action: () => {} },
-                ])}
-              />
-              <div style="min-height: 40px;"></div>
-              <RequestMenuButton
-                label="ADD TEXT"
-                idPrefix="Request_AddText_Menu"
-                onClick={() => {}}
-                buttonStyle="width:180px;"
-                menuItems={Subject.create([
-                  { label: 'DUE TO WEATHER', action: () => {} },
-                  { label: 'DUE TO A/C PERFORMANCE', action: () => {} },
-                  { label: 'DUE TO TURBULENCE', action: () => {} },
-                  { label: 'DUE TO TECHNICAL', action: () => {} },
-                  { label: 'DUE TO MEDICAL', action: () => {} },
-                  { label: 'AT PILOTS DISCRETION', action: () => {} },
-                  { label: 'FREETEXT', action: () => {} },
-                ])}
-              />
+          <div class="mfd-atccom-dcl-form">
+            <div class="mfd-atccom-dcl-title">DEPARTURE CLEARANCE</div>
+            <div class="mfd-atccom-dcl-row">
+              <span>CALLSIGN</span>
+              <InputField<string> dataEntryFormat={new LongAlphanumericFormat()} value={this.callsign} {...inputProps} />
             </div>
+            <div class="mfd-atccom-dcl-row">
+              <span>DEPARTURE ARPT</span>
+              <InputField<string> dataEntryFormat={new AirportFormat()} value={this.origin} {...inputProps} />
+            </div>
+            <div class="mfd-atccom-dcl-row">
+              <span>DESTINATION</span>
+              <InputField<string> dataEntryFormat={new AirportFormat()} value={this.destination} {...inputProps} />
+            </div>
+            <div class="mfd-atccom-dcl-row">
+              <span>GATE</span>
+              <InputField<string> dataEntryFormat={new ShortAlphanumericFormat()} value={this.gate} {...inputProps} />
+            </div>
+            <div class="mfd-atccom-dcl-row">
+              <span>D-ATIS CODE</span>
+              <InputField<string> dataEntryFormat={new AtisCode()} value={this.atis} {...inputProps} />
+            </div>
+            <div class="mfd-atccom-dcl-row">
+              <span>FREE TEXT</span>
+              <InputField<string> dataEntryFormat={new LongAlphanumericFormat()} value={this.freeText} {...inputProps} />
+            </div>
+            <div class="mfd-atccom-dcl-status">{this.status}</div>
           </div>
           <div class="mfd-atccom-request-footer">
-            <div>
-              <Button
-                label="CANCEL"
-                disabled={Subject.create(false)}
-                onClick={() => {
-                  this.elements = [];
-                  this.renderElements();
-                }}
-                buttonStyle="width: 190px; height:64px;"
-              />
-            </div>
-            <div style="position:absolute; right:0px">
-              <Button
-                label="XFR<br /> TO MAILBOX"
-                disabled={Subject.create(false)}
-                onClick={() => this.transferToMailbox()}
-                buttonStyle="width: 190px; height:64px;"
-              />
-            </div>
+            <Button
+              label="CLEAR"
+              onClick={() => {
+                this.callsign.set('');
+                this.origin.set('');
+                this.destination.set('');
+                this.gate.set('');
+                this.atis.set('');
+                this.freeText.set('');
+                this.transferred.set(false);
+                this.status.set('');
+              }}
+              buttonStyle="width: 190px; height: 64px;"
+            />
+            <Button
+              label={<span>XFR TO<br />MAILBOX</span>}
+              disabled={this.transferDisabled}
+              onClick={() => this.transferToMailbox()}
+              buttonStyle="width: 190px; height: 64px;"
+            />
           </div>
         </div>
-        {/* <div
-          id="atccom-inop"
-          style="
-    position: absolute;
-    top: 132px;
-    width: 768px;
-    height: 818px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 35px;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: #e68000"
-        >
-          <span>NOT YET IMPLEMENTED</span>
-        </div> */}
         <AtccomFooter bus={this.props.bus} mfd={this.props.mfd} atcService={this.props.atcService} />
       </>
     );

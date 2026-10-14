@@ -1,126 +1,34 @@
-﻿@import '../../../MsfsAvionicsCommon/definitions';
-
-#atccom-request-container {
-  display: flex;
-  flex: 1 1 auto;
-  width: 100%;
+.mfd-atccom-dcl-form {
+  margin: 18px 24px;
+  padding: 18px 24px;
+  border: 1px solid #aeb0b7;
+  max-width: 600px;
 }
 
-#atccom-request-body {
-  width: 580px;
-  padding-top: 10px;
+.mfd-atccom-dcl-title {
+  margin-bottom: 18px;
+  font-size: 24px;
+  color: #fff;
 }
 
-#atccom-request-menu {
-  width: 180px;
-  margin: 10px 10px 10px 5px;
+.mfd-atccom-dcl-row {
+  display: grid;
+  grid-template-columns: 210px 180px;
+  align-items: center;
+  min-height: 52px;
+  font-size: 20px;
+  color: #fff;
+}
+
+.mfd-atccom-dcl-status {
+  height: 30px;
+  margin-top: 12px;
+  font-size: 19px;
+  color: #00ffff;
 }
 
 .mfd-atccom-request-footer {
-  position: relative;
-  display: flex;
-  flex-flow: row;
-  padding: 3px 0;
-  min-height: 64px;
-}
-
-.request-block {
-  font-size: 22px;
-  position: relative;
-
-  .request-block-title {
-    text-align: center;
-    transform: translateY(-40%);
-  }
-  .request-block-body {
-    display: flex;
-    flex-direction: column;
-  }
-  .request-block-input-label {
-    font-size: 22px;
-    margin: auto 0;
-    margin-right: 20px;
-    text-align: right;
-  }
-  .request-block-line {
-    display: flex;
-    padding: 5px 0;
-    min-height: 47px;
-  }
-}
-
-.request-block-single {
-  border: 2px solid #fff;
-  border-top: transparent;
-  margin: 20px 10px;
-
-  .request-block-body {
-    padding: 20px;
-  }
-
-  .request-block-input-label {
-    width: 200px;
-  }
-}
-
-.request-block-stackable {
-  border-bottom: 1px solid #fff;
-  margin: 0;
-
-  .request-block-body {
-    padding: 0 0 5px 20px;
-  }
-
-  .mfd-icon-button {
-    width: 40px;
-    height: 40px;
-    position: absolute;
-    right: 0px;
-    top: 5px;
-  }
-}
-
-.request-block-header {
   display: flex;
   justify-content: space-between;
-
-  .left,
-  .right {
-    border-top: 1px solid #fff;
-    flex: 0 1 15%;
-  }
-}
-
-.mfd-atccom-request-button-dropdown-label {
-  flex-grow: 1;
-  text-align: right;
-  vertical-align: center;
-  padding-left: 10px;
-  padding-right: 5px;
-}
-
-.mfd-atccom-request-button-dropdown-menu {
-  background-color: $display-mfd-darker-grey;
-  min-width: 100%;
-  position: absolute;
-  z-index: 60;
-  overflow: auto;
-  display: none;
-  border: 2px outset $display-light-grey;
-}
-
-.request-textbox-container {
-  border: 2px solid #fff;
-  display: flex;
-  flex-direction: row;
-
-  .request-textbox-textarea {
-    border: 2px solid #fff;
-    width: 90%;
-  }
-
-  .request-textbox-nav {
-    padding: 5px;
-    flex-flow: column;
-  }
+  padding: 4px 24px;
 }
