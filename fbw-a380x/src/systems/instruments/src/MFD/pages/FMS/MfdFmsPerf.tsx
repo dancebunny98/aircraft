@@ -18,7 +18,7 @@ import {
   VNode,
 } from '@microsoft/msfs-sdk';
 
-import { Button, ButtonMenuItem } from '../../../MsfsAvionicsCommon/UiWidgets/Button';
+import { Button } from '../../../MsfsAvionicsCommon/UiWidgets/Button';
 import { RadioButtonGroup } from '../../../MsfsAvionicsCommon/UiWidgets/RadioButtonGroup';
 import { AbstractMfdPageProps } from '../../MFD';
 import { Footer } from '../common/Footer';
@@ -294,16 +294,11 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   // TO page subjects, refs and methods
   private readonly originRunwayIdent = Subject.create<string>('---');
 
-  private readonly toRequestDialogVisible = Subject.create(false);
-  private readonly toRequestDialogTitle = Subject.create('');
-  private readonly toRequestState = Subject.create<'idle' | 'pending' | 'received' | 'missing' | 'selectRunway'>(
-    'idle',
-  );
+  private readonly toRequestState = Subject.create<'idle' | 'pending' | 'missing' | 'selectRunway'>('idle');
   private readonly toRequestFailure = Subject.create('EFB NO REPLY');
   private readonly toRequestTopLabel = MappedSubject.create(
     ([state, failure]) => {
       if (state === 'pending') return 'REQUEST';
-      if (state === 'received') return 'RECEIVED';
       if (state === 'missing') return failure;
       if (state === 'selectRunway') return 'SELECT RWY';
       return 'CPNY T.O';
@@ -313,7 +308,6 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   );
   private readonly toRequestBottomLabel = this.toRequestState.map((state) => {
     if (state === 'pending') return 'PENDING...';
-    if (state === 'received') return 'CPNY T.O';
     if (state === 'missing') return 'REQUEST';
     if (state === 'selectRunway') return 'IN F-PLN';
     return 'REQUEST';
@@ -326,20 +320,12 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
         {this.toRequestBottomLabel}
       </span>
       <span
-        class={{ hidden: this.toRequestState.map((state) => state === 'pending' || state === 'received') }}
+        class={{ hidden: this.toRequestState.map((state) => state === 'pending') }}
         style="display: flex; align-items: center; justify-content: center;"
       >
         *
       </span>
     </div>
-  );
-  private readonly toRequestMenuItems = this.toRequestState.map((state): ButtonMenuItem[] =>
-    state === 'received'
-      ? [
-          { label: 'INSERT*', action: () => this.toRequestDialogVisible.set(true) },
-          { label: 'CLEAR*', action: () => this.clearEfbTakeoff() },
-        ]
-      : [],
   );
   private pendingEfbTakeoff: EfbTakeoffData | null = null;
   private toRequestTimer: number | null = null;
@@ -349,7 +335,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   private requestEfbTakeoff(): void {
     this.clearEfbTakeoff();
     if (this.readEfbTakeoff()) {
-      this.toRequestState.set('received');
+      this.confirmEfbTakeoff();
       return;
     }
     const request = SimVar.GetSimVarValue('L:A380X_EFB_TO_REQUEST', 'number');
@@ -361,7 +347,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
       this.toRequestAttempts += 1;
       if (this.readEfbTakeoff()) {
         this.stopEfbTakeoffRequest();
-        this.toRequestState.set('received');
+        this.confirmEfbTakeoff();
       } else if (this.toRequestAttempts >= 80) {
         this.stopEfbTakeoffRequest();
         this.toRequestState.set('missing');
@@ -380,7 +366,6 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
     this.stopEfbTakeoffRequest();
     this.pendingEfbTakeoff = null;
     this.toRequestId = null;
-    this.toRequestDialogVisible.set(false);
     this.toRequestState.set('idle');
   }
 
@@ -449,26 +434,22 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
       this.toRequestFailure.set('INVALID EFB DATA');
       return false;
     }
-    this.pendingEfbTakeoff = data;
     const fplnAirport = this.loadedFlightPlan?.originAirport?.ident;
     const fplnRunway = runwayIdentForComparison(this.loadedFlightPlan?.originRunway?.ident);
-    const mismatch =
-      (fplnAirport && fplnAirport !== airport) || (fplnRunway && fplnRunway !== runway)
-        ? `\nF-PLN ${fplnAirport ?? '----'}/${fplnRunway ?? '--'} DIFFERS`
-        : '';
-    this.toRequestDialogTitle.set(
-      `${airport}/${runway}  ${Math.round(data.weight / 1_000)}T${mismatch}\n` +
-        `V1 ${data.v1}  VR ${data.vr}  V2 ${data.v2}\n` +
-        `CONF ${data.flaps}  ${data.flex >= 0 ? `FLEX ${data.flex}` : 'TOGA'}\n` +
-        `PACKS ${data.packs ? 'ON' : 'OFF/APU'}  A/ICE ${['OFF', 'ENG', 'ENG+WING'][data.antiIce]}` +
-        (data.trimValid === 1 ? `  THS ${data.trim < 0 ? 'DN' : 'UP'}${Math.abs(data.trim)}` : ''),
-    );
+    if (fplnAirport && fplnAirport !== airport) {
+      this.toRequestFailure.set('EFB APT DIFF');
+      return false;
+    }
+    if (fplnRunway && fplnRunway !== runway) {
+      this.toRequestFailure.set('EFB RWY DIFF');
+      return false;
+    }
+    this.pendingEfbTakeoff = data;
     return true;
   }
 
   private confirmEfbTakeoff(): void {
     const data = this.pendingEfbTakeoff;
-    this.toRequestDialogVisible.set(false);
     if (
       !data ||
       Math.floor(Date.now() / 1_000) - data.publishedAt >= 30 * 60 ||
@@ -2266,16 +2247,6 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
                     />
                   </div>
                   <div style={{ visibility: this.visibilityConsideringFlightPlanIndex }}>
-                    <ConfirmationDialog
-                      visible={this.toRequestDialogVisible}
-                      cancelAction={() => {
-                        this.toRequestDialogVisible.set(false);
-                      }}
-                      confirmAction={() => this.confirmEfbTakeoff()}
-                      contentContainerStyle="width: 460px; min-height: 205px;"
-                    >
-                      <span style="white-space: pre-line;">{this.toRequestDialogTitle}</span>
-                    </ConfirmationDialog>
                     <ConditionalComponent
                       width={176}
                       height={62}
@@ -2286,9 +2257,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
                           onClick={() => this.requestEfbTakeoff()}
                           disabled={this.toRequestState.map((state) => state === 'pending')}
                           idPrefix="mfd-fms-perf-cpny-to-request"
-                          menuItems={this.toRequestMenuItems}
                           showArrow={false}
-                          dropdownMenuRightAligned
                           buttonStyle="width: 178px; height: 62px; padding-left: 8px; padding-right: 8px;"
                         />
                       }
