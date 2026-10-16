@@ -18,7 +18,7 @@ import {
   VNode,
 } from '@microsoft/msfs-sdk';
 
-import { Button } from '../../../MsfsAvionicsCommon/UiWidgets/Button';
+import { Button, ButtonMenuItem } from '../../../MsfsAvionicsCommon/UiWidgets/Button';
 import { RadioButtonGroup } from '../../../MsfsAvionicsCommon/UiWidgets/RadioButtonGroup';
 import { AbstractMfdPageProps } from '../../MFD';
 import { Footer } from '../common/Footer';
@@ -92,6 +92,7 @@ interface EfbTakeoffData {
   antiIce: number;
   weight: number;
   publishedAt: number;
+  revision: number;
 }
 
 const runwayIdentForComparison = (ident: string | undefined): string | undefined => {
@@ -294,11 +295,24 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   // TO page subjects, refs and methods
   private readonly originRunwayIdent = Subject.create<string>('---');
 
-  private readonly toRequestState = Subject.create<'idle' | 'pending' | 'missing' | 'selectRunway'>('idle');
+  private readonly toRequestState = Subject.create<'idle' | 'pending' | 'received' | 'missing' | 'selectRunway'>(
+    'idle',
+  );
+  private lastInsertedEfbTakeoffRevision = SimVar.GetSimVarValue('L:A380X_EFB_TO_INSERTED_REV', 'number') || 0;
+  private readonly toRequestDisabled = Subject.create(
+    this.lastInsertedEfbTakeoffRevision > 0 &&
+      SimVar.GetSimVarValue('L:A380X_EFB_TO_REV', 'number') <= this.lastInsertedEfbTakeoffRevision,
+  );
+  private readonly toRequestButtonDisabled = MappedSubject.create(
+    ([state, disabled]) => state === 'pending' || disabled,
+    this.toRequestState,
+    this.toRequestDisabled,
+  );
   private readonly toRequestFailure = Subject.create('EFB NO REPLY');
   private readonly toRequestTopLabel = MappedSubject.create(
     ([state, failure]) => {
       if (state === 'pending') return 'REQUEST';
+      if (state === 'received') return 'RECEIVED';
       if (state === 'missing') return failure;
       if (state === 'selectRunway') return 'SELECT RWY';
       return 'CPNY T.O';
@@ -308,6 +322,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   );
   private readonly toRequestBottomLabel = this.toRequestState.map((state) => {
     if (state === 'pending') return 'PENDING...';
+    if (state === 'received') return 'CPNY T.O';
     if (state === 'missing') return 'REQUEST';
     if (state === 'selectRunway') return 'IN F-PLN';
     return 'REQUEST';
@@ -320,12 +335,20 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
         {this.toRequestBottomLabel}
       </span>
       <span
-        class={{ hidden: this.toRequestState.map((state) => state === 'pending') }}
+        class={{ hidden: this.toRequestState.map((state) => state === 'pending' || state === 'received') }}
         style="display: flex; align-items: center; justify-content: center;"
       >
         *
       </span>
     </div>
+  );
+  private readonly toRequestMenuItems = this.toRequestState.map((state): ButtonMenuItem[] =>
+    state === 'received'
+      ? [
+          { label: 'INSERT*', action: () => this.confirmEfbTakeoff() },
+          { label: 'CLEAR*', action: () => this.clearEfbTakeoff() },
+        ]
+      : [],
   );
   private pendingEfbTakeoff: EfbTakeoffData | null = null;
   private toRequestTimer: number | null = null;
@@ -335,7 +358,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   private requestEfbTakeoff(): void {
     this.clearEfbTakeoff();
     if (this.readEfbTakeoff()) {
-      this.confirmEfbTakeoff();
+      this.toRequestState.set('received');
       return;
     }
     const request = SimVar.GetSimVarValue('L:A380X_EFB_TO_REQUEST', 'number');
@@ -347,7 +370,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
       this.toRequestAttempts += 1;
       if (this.readEfbTakeoff()) {
         this.stopEfbTakeoffRequest();
-        this.confirmEfbTakeoff();
+        this.toRequestState.set('received');
       } else if (this.toRequestAttempts >= 80) {
         this.stopEfbTakeoffRequest();
         this.toRequestState.set('missing');
@@ -412,10 +435,13 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
       antiIce: read('ANTI_ICE'),
       weight: read('WEIGHT'),
       publishedAt,
+      revision: read('REV'),
     };
     const valid =
       publishedAt > 0 &&
       read('VALID') === publishedAt &&
+      Number.isSafeInteger(data.revision) &&
+      data.revision > 0 &&
       airport.length === 4 &&
       runway.length > 0 &&
       [data.v1, data.vr, data.v2, data.flaps, data.weight].every(Number.isFinite) &&
@@ -453,7 +479,8 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
     if (
       !data ||
       Math.floor(Date.now() / 1_000) - data.publishedAt >= 30 * 60 ||
-      SimVar.GetSimVarValue('L:A380X_EFB_TO_VALID', 'number') !== data.publishedAt
+      SimVar.GetSimVarValue('L:A380X_EFB_TO_VALID', 'number') !== data.publishedAt ||
+      SimVar.GetSimVarValue('L:A380X_EFB_TO_REV', 'number') !== data.revision
     ) {
       this.clearEfbTakeoff();
       return;
@@ -480,6 +507,9 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
         this.props.fmcService.master.acInterface.setTakeoffTrim(data.trim);
       }
     }
+    this.lastInsertedEfbTakeoffRevision = data.revision;
+    SimVar.SetSimVarValue('L:A380X_EFB_TO_INSERTED_REV', 'number', data.revision).catch(console.error);
+    this.toRequestDisabled.set(true);
     this.clearEfbTakeoff();
   }
 
@@ -1250,6 +1280,10 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   }
 
   private drawPage(tab?: FlightPhaseTabIndex) {
+    const revision = SimVar.GetSimVarValue('L:A380X_EFB_TO_REV', 'number');
+    this.toRequestDisabled.set(
+      this.lastInsertedEfbTakeoffRevision > 0 && revision <= this.lastInsertedEfbTakeoffRevision,
+    );
     this.loadFlightPlanPerformanceData();
 
     const fpIndex = this.loadedFlightPlanIndex.get();
@@ -2255,9 +2289,11 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
                         <Button
                           label={this.toRequestButtonLabel}
                           onClick={() => this.requestEfbTakeoff()}
-                          disabled={this.toRequestState.map((state) => state === 'pending')}
+                          disabled={this.toRequestButtonDisabled}
                           idPrefix="mfd-fms-perf-cpny-to-request"
+                          menuItems={this.toRequestMenuItems}
                           showArrow={false}
+                          dropdownMenuRightAligned
                           buttonStyle="width: 178px; height: 62px; padding-left: 8px; padding-right: 8px;"
                         />
                       }

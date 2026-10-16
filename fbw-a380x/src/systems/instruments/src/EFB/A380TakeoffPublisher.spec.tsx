@@ -32,10 +32,12 @@ describe('A380 EFB takeoff bridge', () => {
   });
 
   it('publishes all FMS request fields and marks the result valid last', async () => {
+    const revision = SimVar.GetSimVarValue('L:A380X_EFB_TO_REV', 'number');
     await publishA380Takeoff(result, 'KJFK', '04L');
 
     const read = (name: string) => SimVar.GetSimVarValue(`L:A380X_EFB_TO_${name}`, 'number');
     expect(read('STATUS')).toBe(4);
+    expect(read('REV')).toBe(revision + 1);
     expect(read('VALID')).toBeGreaterThan(0);
     expect(Math.abs(read('VALID') - Math.floor(Date.now() / 1_000))).toBeLessThanOrEqual(1);
     expect(read('AIRPORT').toString(36).toUpperCase()).toBe('KJFK');
@@ -60,6 +62,7 @@ describe('A380 EFB takeoff bridge', () => {
   });
 
   it('replays the saved calculation after an FMS request', async () => {
+    const revision = SimVar.GetSimVarValue('L:A380X_EFB_TO_REV', 'number');
     mockStore.takeoff = {
       result,
       icao: 'KJFK',
@@ -76,6 +79,7 @@ describe('A380 EFB takeoff bridge', () => {
     await vi.waitFor(() => expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_VALID', 'number')).toBeGreaterThan(0));
     expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_V1', 'number')).toBe(145);
     expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_RESPONSE', 'number')).toBe(request + 1);
+    expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_REV', 'number')).toBe(revision);
   });
 
   it('replays a request made before the EFB responder mounts', async () => {

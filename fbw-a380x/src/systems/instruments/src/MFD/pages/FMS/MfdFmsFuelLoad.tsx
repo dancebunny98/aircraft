@@ -28,7 +28,7 @@ import {
   TimeHHMMFormat,
   WeightFormat,
 } from '../common/DataEntryFormats';
-import { Button } from '../../../MsfsAvionicsCommon/UiWidgets/Button';
+import { Button, ButtonMenuItem } from '../../../MsfsAvionicsCommon/UiWidgets/Button';
 import {
   maxAltnFuel,
   maxBlockFuel,
@@ -54,6 +54,18 @@ import { FlightPlanIndex } from '@fmgc/flightplanning/FlightPlanManager';
 import { FlightPlanChangeNotifier } from '@fmgc/flightplanning/sync/FlightPlanChangeNotifier';
 
 interface MfdFmsFuelLoadProps extends AbstractMfdPageProps {}
+
+interface EfbFuelData {
+  sourceKey: string;
+  zfw: number;
+  zfwCg: number;
+  blockFuel: number;
+  taxiFuel: number;
+  pax: number;
+  hasPax: boolean;
+}
+
+let lastInsertedEfbFuelKey: string | null = null;
 
 export class MfdFmsFuelLoad extends FmsFlightPlanPage<MfdFmsFuelLoadProps> {
   private readonly weightUnit = NXDataStore.getSetting('CONFIG_USING_METRIC_UNIT').map((v) =>
@@ -118,10 +130,28 @@ export class MfdFmsFuelLoad extends FmsFlightPlanPage<MfdFmsFuelLoadProps> {
   private readonly minimumFuelAtDestination = Subject.create<number | null>(null);
   private readonly minimumFuelAtDestinationIsPilotEntered = Subject.create<boolean>(false);
 
-  // Keep the request available even before the first EFB publication. This lets the crew
-  // request data after entering or importing the OFP on the EFB without reopening the page.
   private readonly fuelPlanningIsDisabled = Subject.create<boolean>(false);
-  private lastEfbOfpValid = 0;
+  private readonly fuelPlanningReceived = Subject.create(false);
+  private readonly fuelPlanningTopLabel = this.fuelPlanningReceived.map((received) => (received ? 'RECEIVED' : 'FUEL'));
+  private readonly fuelPlanningBottomLabel = this.fuelPlanningReceived.map((received) =>
+    received ? 'FUEL PLAN' : 'PLANNING',
+  );
+  private readonly fuelPlanningLabel: VNode = (
+    <span>
+      {this.fuelPlanningTopLabel}
+      <br />
+      {this.fuelPlanningBottomLabel}
+    </span>
+  );
+  private readonly fuelPlanningMenuItems = this.fuelPlanningReceived.map((received): ButtonMenuItem[] =>
+    received
+      ? [
+          { label: 'INSERT*', action: () => this.insertEfbFuelData() },
+          { label: 'CLEAR*', action: () => this.clearEfbFuelData() },
+        ]
+      : [],
+  );
+  private pendingEfbFuelData: EfbFuelData | null = null;
 
   private readonly destinationAlternateTimeHeader = this.activeFlightPhase.map((v) =>
     v === FmgcFlightPhase.Preflight ? 'TIME' : 'UTC',
@@ -225,12 +255,12 @@ export class MfdFmsFuelLoad extends FmsFlightPlanPage<MfdFmsFuelLoadProps> {
         .on('realTime')
         .atFrequency(1)
         .handle((_t) => {
+          this.refreshFuelPlanningAvailability();
           if (!this.props.fmcService.master || !this.loadedFlightPlan) {
             return;
           }
 
           this.loadFlightPlanPerformanceData();
-          this.importEfbOfpData();
 
           const loadedfpIndex = this.loadedFlightPlanIndex.get();
           // FIXME: Move to main update loop once calculated by the predictions
@@ -407,43 +437,82 @@ export class MfdFmsFuelLoad extends FmsFlightPlanPage<MfdFmsFuelLoadProps> {
     this.costIndex.set(pd?.costIndex ? pd.costIndex.get() : null);
   }
 
-  private importEfbOfpData(force = false): void {
+  private getEfbFuelData(): EfbFuelData | null {
     const publishedAt = SimVar.GetSimVarValue('L:A380X_EFB_OFP_VALID', 'number');
     const hasOfp = Number.isFinite(publishedAt) && publishedAt > 0;
-    if (!force && (!hasOfp || publishedAt <= this.lastEfbOfpValid)) return;
-
     const ofpZfw = hasOfp ? SimVar.GetSimVarValue('L:A380X_EFB_OFP_ZFW', 'number') : 0;
     const ofpBlockFuel = hasOfp ? SimVar.GetSimVarValue('L:A380X_EFB_OFP_BLOCK_FUEL', 'number') : 0;
     const taxiFuel = hasOfp ? SimVar.GetSimVarValue('L:A380X_EFB_OFP_TAXI_FUEL', 'number') : 0;
-    const loadedZfw = force ? SimVar.GetSimVarValue('L:A32NX_AIRFRAME_ZFW', 'number') : 0;
-    const loadedZfwCg = force ? SimVar.GetSimVarValue('L:A32NX_AIRFRAME_ZFW_CG_PERCENT_MAC', 'number') : 0;
-    const hasLoadedPax = force && SimVar.GetSimVarValue('L:A380X_EFB_LOADED_PAX_VALID', 'number') === 1;
-    const loadedPax = force ? SimVar.GetSimVarValue('L:A380X_EFB_LOADED_PAX', 'number') : 0;
+    const loadedZfw = SimVar.GetSimVarValue('L:A32NX_AIRFRAME_ZFW', 'number');
+    const loadedZfwCg = SimVar.GetSimVarValue('L:A32NX_AIRFRAME_ZFW_CG_PERCENT_MAC', 'number');
+    const hasLoadedPax = SimVar.GetSimVarValue('L:A380X_EFB_LOADED_PAX_VALID', 'number') === 1;
+    const loadedPax = SimVar.GetSimVarValue('L:A380X_EFB_LOADED_PAX', 'number');
     const ofpPax = hasOfp ? SimVar.GetSimVarValue('L:A380X_EFB_OFP_PAX', 'number') : 0;
-    const loadedFuel = force ? SimVar.GetSimVarValue('FUEL TOTAL QUANTITY WEIGHT', 'kilograms') : 0;
+    const loadedFuel = SimVar.GetSimVarValue('FUEL TOTAL QUANTITY WEIGHT', 'kilograms');
+    const desiredFuel = SimVar.GetSimVarValue('L:A32NX_FUEL_DESIRED', 'kilograms');
     const zfw = Number.isFinite(loadedZfw) && loadedZfw > 0 ? loadedZfw : ofpZfw;
     const blockFuel = Number.isFinite(loadedFuel) && loadedFuel > 0 ? loadedFuel : ofpBlockFuel;
+    if (!hasOfp && !(Number.isFinite(loadedZfw) && loadedZfw > 0)) return null;
+    const pax = hasLoadedPax ? loadedPax : ofpPax;
+    return {
+      sourceKey: [publishedAt, zfw, loadedZfwCg, blockFuel, desiredFuel, taxiFuel, pax, hasLoadedPax].join('|'),
+      zfw,
+      zfwCg: loadedZfwCg,
+      blockFuel,
+      taxiFuel,
+      pax,
+      hasPax: hasLoadedPax || hasOfp,
+    };
+  }
+
+  private refreshFuelPlanningAvailability(): void {
+    const current = this.getEfbFuelData();
+    this.fuelPlanningIsDisabled.set(
+      !this.fuelPlanningReceived.get() &&
+        lastInsertedEfbFuelKey !== null &&
+        (!current || current.sourceKey === lastInsertedEfbFuelKey),
+    );
+  }
+
+  private requestEfbFuelData(): void {
+    const current = this.getEfbFuelData();
+    if (!current || current.sourceKey === lastInsertedEfbFuelKey) return;
+    this.pendingEfbFuelData = current;
+    this.fuelPlanningReceived.set(true);
+  }
+
+  private clearEfbFuelData(): void {
+    this.pendingEfbFuelData = null;
+    this.fuelPlanningReceived.set(false);
+    this.refreshFuelPlanningAvailability();
+  }
+
+  private insertEfbFuelData(): void {
+    const data = this.pendingEfbFuelData;
+    if (!data || this.getEfbFuelData()?.sourceKey !== data.sourceKey) {
+      this.clearEfbFuelData();
+      return;
+    }
     const fpIndex = this.loadedFlightPlanIndex.get();
 
-    if (zfw > 0) {
-      this.props.flightPlanInterface.setPerformanceData('zeroFuelWeight', zfw / 1000, fpIndex);
+    if (data.zfw > 0) {
+      this.props.flightPlanInterface.setPerformanceData('zeroFuelWeight', data.zfw / 1000, fpIndex);
     }
-    if (Number.isFinite(loadedZfwCg) && loadedZfwCg >= minZfwCg && loadedZfwCg <= maxZfwCg) {
-      this.props.flightPlanInterface.setPerformanceData('zeroFuelWeightCenterOfGravity', loadedZfwCg, fpIndex);
+    if (Number.isFinite(data.zfwCg) && data.zfwCg >= minZfwCg && data.zfwCg <= maxZfwCg) {
+      this.props.flightPlanInterface.setPerformanceData('zeroFuelWeightCenterOfGravity', data.zfwCg, fpIndex);
     }
-    const pax = hasLoadedPax ? loadedPax : ofpPax;
-    if ((hasLoadedPax || hasOfp) && Number.isInteger(pax) && pax >= 0 && pax <= 853) {
-      this.props.flightPlanInterface.setPerformanceData('paxNumber', pax, fpIndex);
-      if (fpIndex === FlightPlanIndex.Active) this.props.fmcService.master.acInterface.updatePaxNumber(pax);
+    if (data.hasPax && Number.isInteger(data.pax) && data.pax >= 0 && data.pax <= 853) {
+      this.props.flightPlanInterface.setPerformanceData('paxNumber', data.pax, fpIndex);
+      if (fpIndex === FlightPlanIndex.Active) this.props.fmcService.master.acInterface.updatePaxNumber(data.pax);
     }
-    if (blockFuel > 0) {
-      this.props.flightPlanInterface.setPerformanceData('blockFuel', blockFuel / 1000, fpIndex);
+    if (data.blockFuel > 0) {
+      this.props.flightPlanInterface.setPerformanceData('blockFuel', data.blockFuel / 1000, fpIndex);
     }
-    if (taxiFuel > 0) {
-      this.props.flightPlanInterface.setPerformanceData('pilotTaxiFuel', taxiFuel / 1000, fpIndex);
+    if (data.taxiFuel > 0) {
+      this.props.flightPlanInterface.setPerformanceData('pilotTaxiFuel', data.taxiFuel / 1000, fpIndex);
     }
-    if (hasOfp) this.lastEfbOfpValid = Math.max(this.lastEfbOfpValid, publishedAt);
-    this.fuelPlanningIsDisabled.set(false);
+    lastInsertedEfbFuelKey = data.sourceKey;
+    this.clearEfbFuelData();
   }
 
   updateDestAndAltnPredictions() {
@@ -562,18 +631,12 @@ export class MfdFmsFuelLoad extends FmsFlightPlanPage<MfdFmsFuelLoadProps> {
               <div style="display: flex; flex: 1; justify-content: center;">
                 <Button
                   disabled={this.fuelPlanningIsDisabled}
-                  label={
-                    <div style="display: flex; flex-direction: row;">
-                      <span style="text-align: center; vertical-align: center; margin-right: 10px;">
-                        FUEL
-                        <br />
-                        PLANNING
-                      </span>
-                      <span style="display: flex; align-items: center; justify-content: center;">*</span>
-                    </div>
-                  }
-                  onClick={() => this.importEfbOfpData(true)}
-                  buttonStyle="padding-right: 2px;"
+                  label={this.fuelPlanningLabel}
+                  onClick={() => this.requestEfbFuelData()}
+                  idPrefix="mfd-fms-fuel-planning-request"
+                  menuItems={this.fuelPlanningMenuItems}
+                  showArrow={false}
+                  buttonStyle="width: 178px; height: 62px;"
                 />
               </div>
             </div>

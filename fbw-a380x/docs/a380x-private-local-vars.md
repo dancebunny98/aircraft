@@ -233,11 +233,19 @@ Please keep all vars under the correct ATA chapter where they relate to aircraft
 
 - `L:A380X_EFB_TO_FAIL_STEP`
     - Number
-    - Index of the failed takeoff bridge write when status is 5. Steps 1-12 are airport, runway, weight, V1, VR, V2, flaps, flex, trim, trim validity, packs and anti-ice; step 13 is the validity timestamp.
+    - Index of the failed takeoff bridge write when status is 5. Steps 1-12 are airport, runway, weight, V1, VR, V2, flaps, flex, trim, trim validity, packs and anti-ice; step 13 is the revision on a new calculation, followed by the validity timestamp.
 
 - `L:A380X_EFB_TO_VALID`
     - Number
     - Unix timestamp in seconds, written after all takeoff result fields.
+
+- `L:A380X_EFB_TO_REV`
+    - Number
+    - Incremented only when the EFB calculates a new takeoff result; replaying an FMS request retains the revision.
+
+- `L:A380X_EFB_TO_INSERTED_REV`
+    - Number
+    - Last takeoff revision inserted into FMS PERF. A new calculation is required to enable another request.
 
 - `L:A380X_EFB_TO_REQUEST`
     - Number

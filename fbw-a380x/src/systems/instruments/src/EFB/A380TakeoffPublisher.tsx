@@ -15,7 +15,12 @@ const encode = (value: string): number =>
     .reduce((code, character) => code * 36 + parseInt(character, 36), 0);
 
 /** Publishes the same result that the EFB calculator displays. */
-export function publishA380Takeoff(result: TakeoffPerformanceResult, airport?: string, runway?: string): Promise<void> {
+export function publishA380Takeoff(
+  result: TakeoffPerformanceResult,
+  airport?: string,
+  runway?: string,
+  replay = false,
+): Promise<void> {
   const status = !runway ? 1 : !airport ? 2 : !result.v1 || !result.vR || !result.v2 ? 3 : 4;
   const values =
     status === 4
@@ -46,6 +51,11 @@ export function publishA380Takeoff(result: TakeoffPerformanceResult, airport?: s
           step += 1;
           await SimVar.SetSimVarValue(`${prefix}${name}`, 'number', value);
         }
+        if (!replay) {
+          const revision = SimVar.GetSimVarValue(`${prefix}REV`, 'number');
+          step += 1;
+          await SimVar.SetSimVarValue(`${prefix}REV`, 'number', (Number.isFinite(revision) ? revision : 0) + 1);
+        }
         step += 1;
         await SimVar.SetSimVarValue(`${prefix}VALID`, 'number', Math.floor(Date.now() / 1_000));
         await SimVar.SetSimVarValue(`${prefix}STATUS`, 'number', status);
@@ -72,7 +82,7 @@ export function A380TakeoffRequestResponder(): null {
       SimVar.SetSimVarValue(`${prefix}RESPONSE`, 'number', request).catch(console.error);
       const { result, icao, availableRunways, selectedRunwayIndex } = store.getState().performance.takeoff;
       if (result) {
-        publishA380Takeoff(result, icao, availableRunways[selectedRunwayIndex]?.ident);
+        publishA380Takeoff(result, icao, availableRunways[selectedRunwayIndex]?.ident, true);
       }
     }, 250);
     return () => window.clearInterval(timer);

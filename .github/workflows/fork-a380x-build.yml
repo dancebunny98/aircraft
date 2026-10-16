@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
       - run: ./scripts/dev-env/run.sh ./scripts/setup.sh --clean
       - run: ./scripts/dev-env/run.sh pnpm exec eslint fbw-a380x/src/systems/shared/src/performance/a380x_*.ts
-      - run: ./scripts/dev-env/run.sh pnpm exec eslint fbw-a380x/src/systems/instruments/src/EFB/index.tsx fbw-a380x/src/systems/instruments/src/MFD/pages/FMS/MfdFmsPerf.tsx fbw-common/src/systems/instruments/src/EFB/AircraftContext.ts fbw-common/src/systems/instruments/src/EFB/Performance/Widgets/TakeoffWidget.tsx
+      - run: ./scripts/dev-env/run.sh pnpm exec eslint fbw-a380x/src/systems/instruments/src/EFB/index.tsx fbw-a380x/src/systems/instruments/src/EFB/A380TakeoffPublisher.tsx fbw-a380x/src/systems/instruments/src/MFD/pages/FMS/MfdFmsPerf.tsx fbw-a380x/src/systems/instruments/src/MFD/pages/FMS/MfdFmsFuelLoad.tsx fbw-common/src/systems/instruments/src/EFB/AircraftContext.ts fbw-common/src/systems/instruments/src/EFB/Performance/Widgets/TakeoffWidget.tsx
       - run: ./scripts/dev-env/run.sh pnpm exec eslint fbw-a380x/src/systems/instruments/src/ND/WeatherRadar.tsx fbw-a380x/src/systems/instruments/src/ND/instrument.tsx fbw-a380x/src/systems/instruments/src/MFD/pages/SURV/MfdSurvControls.tsx fbw-common/src/systems/instruments/src/ND/ND.tsx
       - run: ./scripts/dev-env/run.sh pnpm exec eslint fbw-a380x/src/systems/instruments/src/MFD/pages/ATCCOM/MfdAtccomRequest.tsx fbw-a380x/src/systems/instruments/src/MFD/pages/common/DataEntryFormats.tsx fbw-a380x/src/systems/instruments/src/MFD/ATCCOM/AtcDatalinkSystem.ts fbw-a380x/src/systems/instruments/src/SDv2/AtcMailbox.tsx
 
@@ -152,7 +152,7 @@ jobs:
           }
           const script = fs.readFileSync(path.join(root, efbScript), 'utf8');
           const mfdScript = fs.readFileSync(path.join(root, 'html_ui/Pages/VCockpit/Instruments/A380X/MFD/mfd.js'), 'utf8');
-          if (!script.includes('L:A380X_EFB_TO_') || !mfdScript.includes('EFB NO REPLY')) {
+          if (!script.includes('L:A380X_EFB_TO_') || !mfdScript.includes('L:A380X_EFB_TO_INSERTED_REV')) {
             throw new Error('A380X EFB takeoff bridge is missing from the packaged instruments');
           }
           const unresolved = [...new Set(script.match(/process\.env\.[A-Z][A-Z0-9_]*/g) ?? [])].filter(
