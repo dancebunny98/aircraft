@@ -229,7 +229,15 @@ Please keep all vars under the correct ATA chapter where they relate to aircraft
 
 - `L:A380X_EFB_TO_STATUS`
     - Number
-    - Takeoff bridge status: 0 no calculation, 1 no selected runway, 2 no airport, 3 incomplete result, 4 publishing/ready.
+    - Takeoff bridge status: 0 publishing or no calculation, 1 no selected runway, 2 no airport, 3 incomplete result, 4 ready, 5 write failed.
+
+- `L:A380X_EFB_TO_FAIL_STEP`
+    - Number
+    - Index of the failed takeoff bridge write when status is 5. Steps 1-12 are airport, runway, weight, V1, VR, V2, flaps, flex, trim, trim validity, packs and anti-ice; step 13 is the validity timestamp.
+
+- `L:A380X_EFB_TO_VALID`
+    - Number
+    - Unix timestamp in seconds, written after all takeoff result fields.
 
 - `L:A380X_EFB_TO_REQUEST`
     - Number

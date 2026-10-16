@@ -38,12 +38,22 @@ export function publishA380Takeoff(result: TakeoffPerformanceResult, airport?: s
   publishQueue = publishQueue
     .then(async () => {
       await SimVar.SetSimVarValue(`${prefix}VALID`, 'number', 0);
-      await SimVar.SetSimVarValue(`${prefix}STATUS`, 'number', status);
+      await SimVar.SetSimVarValue(`${prefix}STATUS`, 'number', values ? 0 : status);
       if (!values) return;
-      for (const [name, value] of Object.entries(values)) {
-        await SimVar.SetSimVarValue(`${prefix}${name}`, 'number', value);
+      let step = 0;
+      try {
+        for (const [name, value] of Object.entries(values)) {
+          step += 1;
+          await SimVar.SetSimVarValue(`${prefix}${name}`, 'number', value);
+        }
+        step += 1;
+        await SimVar.SetSimVarValue(`${prefix}VALID`, 'number', Math.floor(Date.now() / 1_000));
+        await SimVar.SetSimVarValue(`${prefix}STATUS`, 'number', status);
+      } catch (error) {
+        console.error(`A380X EFB takeoff publish failed at step ${step}`, error);
+        await SimVar.SetSimVarValue(`${prefix}FAIL_STEP`, 'number', step);
+        await SimVar.SetSimVarValue(`${prefix}STATUS`, 'number', 5);
       }
-      await SimVar.SetSimVarValue(`${prefix}VALID`, 'number', Date.now());
     })
     .catch((error) => {
       console.error('A380X EFB takeoff publish failed', error);

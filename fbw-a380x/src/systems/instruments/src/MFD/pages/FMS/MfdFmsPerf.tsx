@@ -362,7 +362,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
       if (this.readEfbTakeoff()) {
         this.stopEfbTakeoffRequest();
         this.toRequestState.set('received');
-      } else if (this.toRequestAttempts >= 24) {
+      } else if (this.toRequestAttempts >= 80) {
         this.stopEfbTakeoffRequest();
         this.toRequestState.set('missing');
       }
@@ -397,15 +397,17 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
             ? 'ENTER EFB APT'
             : status === 3
               ? 'EFB RESULT BAD'
-              : status === 4
-                ? 'EFB SEND FAIL'
-                : this.toRequestId !== null && read('RESPONSE') === this.toRequestId
-                  ? 'NO EFB RESULT'
-                  : 'EFB NO REPLY',
+              : status === 5
+                ? `EFB FAIL ${read('FAIL_STEP')}`
+                : status === 4
+                  ? 'EFB VALID FAIL'
+                  : this.toRequestId !== null && read('RESPONSE') === this.toRequestId
+                    ? 'NO EFB RESULT'
+                    : 'EFB NO REPLY',
       );
       return false;
     }
-    if (Date.now() - publishedAt >= 30 * 60_000) {
+    if (publishedAt > Math.floor(Date.now() / 1_000) + 60 || Math.floor(Date.now() / 1_000) - publishedAt >= 30 * 60) {
       this.toRequestFailure.set('EFB DATA OLD');
       return false;
     }
@@ -469,7 +471,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
     this.toRequestDialogVisible.set(false);
     if (
       !data ||
-      Date.now() - data.publishedAt >= 30 * 60_000 ||
+      Math.floor(Date.now() / 1_000) - data.publishedAt >= 30 * 60 ||
       SimVar.GetSimVarValue('L:A380X_EFB_TO_VALID', 'number') !== data.publishedAt
     ) {
       this.clearEfbTakeoff();

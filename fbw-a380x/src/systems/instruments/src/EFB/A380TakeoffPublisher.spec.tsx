@@ -37,6 +37,7 @@ describe('A380 EFB takeoff bridge', () => {
     const read = (name: string) => SimVar.GetSimVarValue(`L:A380X_EFB_TO_${name}`, 'number');
     expect(read('STATUS')).toBe(4);
     expect(read('VALID')).toBeGreaterThan(0);
+    expect(Math.abs(read('VALID') - Math.floor(Date.now() / 1_000))).toBeLessThanOrEqual(1);
     expect(read('AIRPORT').toString(36).toUpperCase()).toBe('KJFK');
     expect(read('RUNWAY').toString(36).toUpperCase()).toBe('4L');
     expect(read('V1')).toBe(145);
@@ -49,7 +50,7 @@ describe('A380 EFB takeoff bridge', () => {
     expect(read('TRIM_VALID')).toBe(1);
     expect(read('PACKS')).toBe(1);
     expect(read('ANTI_ICE')).toBe(0);
-    expect(vi.mocked(SimVar.SetSimVarValue).mock.lastCall?.[0]).toBe('L:A380X_EFB_TO_VALID');
+    expect(vi.mocked(SimVar.SetSimVarValue).mock.lastCall).toEqual(['L:A380X_EFB_TO_STATUS', 'number', 4]);
   });
 
   it('reports a missing runway instead of publishing an unusable request', async () => {
