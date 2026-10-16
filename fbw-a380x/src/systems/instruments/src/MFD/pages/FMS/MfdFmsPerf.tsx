@@ -299,7 +299,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
   private readonly toRequestState = Subject.create<'idle' | 'pending' | 'received' | 'missing' | 'selectRunway'>(
     'idle',
   );
-  private readonly toRequestFailure = Subject.create('NO EFB DATA');
+  private readonly toRequestFailure = Subject.create('EFB NO REPLY');
   private readonly toRequestTopLabel = MappedSubject.create(
     ([state, failure]) => {
       if (state === 'pending') return 'REQUEST';

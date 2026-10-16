@@ -76,4 +76,23 @@ describe('A380 EFB takeoff bridge', () => {
     expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_V1', 'number')).toBe(145);
     expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_RESPONSE', 'number')).toBe(request + 1);
   });
+
+  it('replays a request made before the EFB responder mounts', async () => {
+    mockStore.takeoff = {
+      result,
+      icao: 'KJFK',
+      availableRunways: [{ ident: '04L' }],
+      selectedRunwayIndex: 0,
+    };
+    await SimVar.SetSimVarValue('L:A380X_EFB_TO_VALID', 'number', 0);
+    const request = SimVar.GetSimVarValue('L:A380X_EFB_TO_REQUEST', 'number') + 1;
+    await SimVar.SetSimVarValue('L:A380X_EFB_TO_REQUEST', 'number', request);
+
+    act(() => {
+      ReactDOM.render(<A380TakeoffRequestResponder />, host);
+    });
+
+    await vi.waitFor(() => expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_RESPONSE', 'number')).toBe(request));
+    await vi.waitFor(() => expect(SimVar.GetSimVarValue('L:A380X_EFB_TO_VALID', 'number')).toBeGreaterThan(0));
+  });
 });

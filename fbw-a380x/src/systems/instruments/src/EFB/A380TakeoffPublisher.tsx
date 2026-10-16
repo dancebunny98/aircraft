@@ -54,7 +54,7 @@ export function publishA380Takeoff(result: TakeoffPerformanceResult, airport?: s
 /** Replays the current EFB calculation when the FMS requests it. */
 export function A380TakeoffRequestResponder(): null {
   useEffect(() => {
-    let lastRequest = SimVar.GetSimVarValue(`${prefix}REQUEST`, 'number');
+    let lastRequest = SimVar.GetSimVarValue(`${prefix}RESPONSE`, 'number');
     const timer = window.setInterval(() => {
       const request = SimVar.GetSimVarValue(`${prefix}REQUEST`, 'number');
       if (!Number.isFinite(request) || request <= lastRequest) return;
