@@ -2294,6 +2294,7 @@ export class MfdFmsPerf extends FmsFlightPlanPage<MfdFmsPerfProps> {
                           menuItems={this.toRequestMenuItems}
                           showArrow={false}
                           dropdownMenuRightAligned
+                          containerStyle="width: 220px; margin-left: -42px;"
                           buttonStyle="width: 178px; height: 62px; padding-left: 8px; padding-right: 8px;"
                         />
                       }
